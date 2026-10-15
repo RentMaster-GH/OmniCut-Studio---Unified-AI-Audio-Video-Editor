@@ -22,23 +22,29 @@ import { ExportPreset } from '@/index';
 const EXPORT_PRESETS: ExportPreset[] = [
   {
     id: 'preset-4k-pro',
-    name: '4K Ultra HD (ProRes)',
+    platform: 'youtube',
+    name: '4K Ultra HD Optimized',
+    description: 'Best quality for long-form video uploads',
     resolution: '3840x2160',
     fps: 60,
+    aspectRatio: '16:9',
     bitrate: 'High (100 Mbps)',
-    format: 'MP4 (H.264)',
-    estimatedSize: '1.2 GB',
-    icon: 'Film'
+    codec: 'H.264',
+    format: 'mp4',
+    icon: 'Youtube'
   },
   {
     id: 'preset-1080p-social',
-    name: '1080p YouTube/TikTok Optimized',
-    resolution: '1920x1080',
+    platform: 'tiktok',
+    name: '1080p Social Reel',
+    description: 'Perfect for vertical mobile screens',
+    resolution: '1080x1920',
     fps: 30,
+    aspectRatio: '9:16',
     bitrate: 'Medium (15 Mbps)',
-    format: 'MP4 (H.264)',
-    estimatedSize: '240 MB',
-    icon: 'Youtube'
+    codec: 'H.264',
+    format: 'mp4',
+    icon: 'Smartphone'
   }
 ];
 
