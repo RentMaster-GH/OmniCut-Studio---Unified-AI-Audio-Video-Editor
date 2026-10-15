@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useProject } from '@ProjectContext';
+import { useProject } from '@/ProjectContext';
 import {
   Volume2,
   VolumeX,
