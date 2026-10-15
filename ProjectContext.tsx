@@ -22,7 +22,7 @@ import {
   INITIAL_ANALYTICS,
   DEFAULT_CAPTION_STYLE,
   DEFAULT_COLOR_GRADING,
-} from '@/utils/initialProject';
+} from '@/utils/initialProject.tsx';
 import { audioEngine } from '@/utils/audioEngine';
 
 type Tool = 'select' | 'razor' | 'slip';
