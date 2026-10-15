@@ -16,8 +16,8 @@ import {
   ArrowRight,
   Loader2,
 } from 'lucide-react';
-import { EXPORT_PRESETS } from '@/initialProject';
-import { ExportPreset } from '../../types';
+import { EXPORT_PRESETS } from '@/index';
+import { ExportPreset } from '@/index';
 
 export const ExportModal: React.FC = () => {
   const { showExportModal, setShowExportModal, clips, duration, tracks } = useProject();
