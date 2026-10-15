@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { useProject } from '@/projectContext';
+import { useProject } from '@/ProjectContext';
 import {
   TrendingUp,
   Users,
