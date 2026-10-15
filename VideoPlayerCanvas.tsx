@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { useProject } from '../../context/ProjectContext';
+import { useProject } from '@/context/ProjectContext';
 import {
   Play,
   Pause,
