@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useProject } from '@/context/projectContext';
+import { useProject } from '@/projectContext';
 import {
   ShieldCheck,
   Fingerprint,
