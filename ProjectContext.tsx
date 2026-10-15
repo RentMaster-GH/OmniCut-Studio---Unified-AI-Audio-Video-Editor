@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import {
   AspectRatio,
   TimelineClip,
@@ -11,7 +11,7 @@ import {
   CaptionStyle,
   ColorGrading,
   AudioMixerChannel,
-} from '@/index
+} from '@/index'; 
 import {
   INITIAL_CLIPS,
   INITIAL_TRACKS,
@@ -22,7 +22,7 @@ import {
   INITIAL_ANALYTICS,
   DEFAULT_CAPTION_STYLE,
   DEFAULT_COLOR_GRADING,
-} from '@/initialProject';
+} from '@/initialProject'; 
 import { audioEngine } from '@/audioEngine';
 
 type Tool = 'select' | 'razor' | 'slip';
