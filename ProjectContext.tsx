@@ -11,7 +11,7 @@ import {
   CaptionStyle,
   ColorGrading,
   AudioMixerChannel,
-} from '@/types';
+} from '@/index
 import {
   INITIAL_CLIPS,
   INITIAL_TRACKS,
@@ -22,8 +22,8 @@ import {
   INITIAL_ANALYTICS,
   DEFAULT_CAPTION_STYLE,
   DEFAULT_COLOR_GRADING,
-} from '@/utils/initialProject.tsx';
-import { audioEngine } from '@/utils/audioEngine';
+} from '@/initialProject';
+import { audioEngine } from '@/audioEngine';
 
 type Tool = 'select' | 'razor' | 'slip';
 type UserRole = 'Owner' | 'Lead Producer' | 'Editor' | 'Viewer';
