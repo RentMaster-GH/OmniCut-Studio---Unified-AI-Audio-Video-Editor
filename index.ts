@@ -125,7 +125,7 @@ export interface ExportPreset {
   description: string;
   resolution: string;
   fps: number;
-  aspectRatio: any; // Using any temporarily avoids having to look up AspectRatio
+  aspectRatio: AspectRatio;
   bitrate: string;
   codec: string;
   format: 'mp4' | 'webm' | 'wav' | 'xml' | 'srt';

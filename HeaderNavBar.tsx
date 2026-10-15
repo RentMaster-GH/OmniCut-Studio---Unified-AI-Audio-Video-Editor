@@ -1,5 +1,5 @@
 import React from 'react';
-import { useProject } from './ProjectContext';
+import { useProject } from '../../context/ProjectContext';
 import {
   Film,
   Sparkles,

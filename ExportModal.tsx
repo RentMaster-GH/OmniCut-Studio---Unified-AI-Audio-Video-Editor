@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useProject } from '@/ProjectContext';
+import { useProject } from '../../context/ProjectContext';
 import {
   X,
   Download,
@@ -16,37 +16,8 @@ import {
   ArrowRight,
   Loader2,
 } from 'lucide-react';
-import { ExportPreset } from '@/index';
-
-//  Define the missing presets array locally right here
-const EXPORT_PRESETS: ExportPreset[] = [
-  {
-    id: 'preset-4k-pro',
-    platform: 'youtube',
-    name: '4K Ultra HD Optimized',
-    description: 'Best quality for long-form video uploads',
-    resolution: '3840x2160',
-    fps: 60,
-    aspectRatio: '16:9',
-    bitrate: 'High (100 Mbps)',
-    codec: 'H.264',
-    format: 'mp4',
-    icon: 'Youtube'
-  },
-  {
-    id: 'preset-1080p-social',
-    platform: 'tiktok',
-    name: '1080p Social Reel',
-    description: 'Perfect for vertical mobile screens',
-    resolution: '1080x1920',
-    fps: 30,
-    aspectRatio: '9:16',
-    bitrate: 'Medium (15 Mbps)',
-    codec: 'H.264',
-    format: 'mp4',
-    icon: 'Smartphone'
-  }
-];
+import { EXPORT_PRESETS } from '../../utils/initialProject';
+import { ExportPreset } from '../../types';
 
 export const ExportModal: React.FC = () => {
   const { showExportModal, setShowExportModal, clips, duration, tracks } = useProject();
