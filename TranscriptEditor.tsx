@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useProject } from '@/projectContext';
+import { useProject } from '@/ProjectContext';
 import {
   Sparkles,
   Scissors,
