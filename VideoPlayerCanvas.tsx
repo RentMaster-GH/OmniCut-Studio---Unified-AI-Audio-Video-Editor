@@ -17,7 +17,7 @@ import {
   Sliders,
   Settings,
 } from 'lucide-react';
-import { audioEngine } from '../../utils/audioEngine';
+import { audioEngine } from '@/audioEngine';
 
 export const VideoPlayerCanvas: React.FC = () => {
   const {
