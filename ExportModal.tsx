@@ -16,7 +16,7 @@ import {
   ArrowRight,
   Loader2,
 } from 'lucide-react';
-import { EXPORT_PRESETS } from '@/utils/initialProject';
+import { EXPORT_PRESETS } from '@/initialProject';
 import { ExportPreset } from '../../types';
 
 export const ExportModal: React.FC = () => {
