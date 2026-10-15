@@ -13,7 +13,7 @@ import {
   Clock,
   AlertCircle,
 } from 'lucide-react';
-import { TranscriptWord } from '../../types';
+import { TranscriptWord } from '@/types';
 
 export const TranscriptEditor: React.FC = () => {
   const {
