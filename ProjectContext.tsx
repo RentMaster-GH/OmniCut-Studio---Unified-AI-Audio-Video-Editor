@@ -22,7 +22,7 @@ import {
   INITIAL_ANALYTICS,
   DEFAULT_CAPTION_STYLE,
   DEFAULT_COLOR_GRADING,
-} from '@/utils/InitialProject';
+} from '@/utils/initialProject';
 import { audioEngine } from '@/utils/audioEngine';
 
 type Tool = 'select' | 'razor' | 'slip';
