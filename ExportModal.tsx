@@ -16,8 +16,31 @@ import {
   ArrowRight,
   Loader2,
 } from 'lucide-react';
-import { EXPORT_PRESETS } from '@/index';
 import { ExportPreset } from '@/index';
+
+//  Define the missing presets array locally right here
+const EXPORT_PRESETS: ExportPreset[] = [
+  {
+    id: 'preset-4k-pro',
+    name: '4K Ultra HD (ProRes)',
+    resolution: '3840x2160',
+    fps: 60,
+    bitrate: 'High (100 Mbps)',
+    format: 'MP4 (H.264)',
+    estimatedSize: '1.2 GB',
+    icon: 'Film'
+  },
+  {
+    id: 'preset-1080p-social',
+    name: '1080p YouTube/TikTok Optimized',
+    resolution: '1920x1080',
+    fps: 30,
+    bitrate: 'Medium (15 Mbps)',
+    format: 'MP4 (H.264)',
+    estimatedSize: '240 MB',
+    icon: 'Youtube'
+  }
+];
 
 export const ExportModal: React.FC = () => {
   const { showExportModal, setShowExportModal, clips, duration, tracks } = useProject();
