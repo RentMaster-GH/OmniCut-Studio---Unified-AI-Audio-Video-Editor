@@ -11,7 +11,7 @@ import {
   CaptionStyle,
   ColorGrading,
   AudioMixerChannel,
-} from '../types';
+} from '@/types';
 import {
   INITIAL_CLIPS,
   INITIAL_TRACKS,
@@ -22,8 +22,8 @@ import {
   INITIAL_ANALYTICS,
   DEFAULT_CAPTION_STYLE,
   DEFAULT_COLOR_GRADING,
-} from '../utils/initialProject';
-import { audioEngine } from '../utils/audioEngine';
+} from '@/Project';
+import { audioEngine } from '@/audioEngine';
 
 interface ProjectContextType {
   // Playback
