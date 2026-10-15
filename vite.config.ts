@@ -1,16 +1,40 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { defineConfig } from 'vite';
+import { defineConfig, Plugin } from 'vite';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const resolveEntryPlugin: Plugin = {
+  name: 'resolve-entry-plugin',
+  resolveId(id) {
+    if (
+      id === '/src/main.tsx' ||
+      id === './src/main.tsx' ||
+      id === 'src/main.tsx' ||
+      id === '/main.tsx' ||
+      id === './main.tsx' ||
+      id === 'main.tsx'
+    ) {
+      const srcPath = path.resolve(__dirname, 'src/main.tsx');
+      if (fs.existsSync(srcPath)) {
+        return srcPath;
+      }
+      const rootPath = path.resolve(__dirname, 'main.tsx');
+      if (fs.existsSync(rootPath)) {
+        return rootPath;
+      }
+    }
+    return null;
+  },
+};
+
 export default defineConfig(() => {
   return {
-    root: '.', // 1. Explicitly force Vite to process index.html from the root folder
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), resolveEntryPlugin],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
@@ -18,7 +42,6 @@ export default defineConfig(() => {
     },
     build: {
       target: 'esnext',
-      outDir: 'dist', // 2. Tells Vite exactly where to output files since root is set to "."
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
