@@ -9,6 +9,7 @@ const __dirname = path.dirname(__filename);
 
 export default defineConfig(() => {
   return {
+    root: '.', // 1. Explicitly force Vite to process index.html from the root folder
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
@@ -17,6 +18,7 @@ export default defineConfig(() => {
     },
     build: {
       target: 'esnext',
+      outDir: 'dist', // 2. Tells Vite exactly where to output files since root is set to "."
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
