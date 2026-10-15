@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { useProject } from '../../context/ProjectContext';
+import { useProject } from '@/ProjectContext';
 import {
   MousePointer,
   Scissors,
