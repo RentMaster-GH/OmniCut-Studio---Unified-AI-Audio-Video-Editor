@@ -57,8 +57,11 @@ export const ExportModal: React.FC = () => {
           tracksCount: tracks.length,
         }),
       });
-      const data = await response.json();
-      setRenderJobDetails(data);
+
+      if (response.ok) {
+        const data = await response.json();
+        setRenderJobDetails(data);
+      }
 
       // Simulate rendering progress bar
       let currentProg = 10;

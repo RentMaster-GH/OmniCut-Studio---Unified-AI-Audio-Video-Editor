@@ -123,15 +123,17 @@ export const CaptionsStudio: React.FC = () => {
           style: captionStyle.preset,
         }),
       });
-      const data = await response.json();
-      if (data.captions?.[0]?.suggestedColor) {
-        setCaptionStyle(prev => ({
-          ...prev,
-          highlightColor: data.captions[0].suggestedColor,
-        }));
+      if (response.ok) {
+        const data = await response.json();
+        if (data.captions?.[0]?.suggestedColor) {
+          setCaptionStyle(prev => ({
+            ...prev,
+            highlightColor: data.captions[0].suggestedColor,
+          }));
+        }
       }
     } catch (e) {
-      console.warn('AI caption call failed', e);
+      console.warn('AI caption call failed, keeping optimized preset', e);
     } finally {
       setIsGenerating(false);
     }

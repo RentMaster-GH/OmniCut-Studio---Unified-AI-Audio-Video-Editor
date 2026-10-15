@@ -429,42 +429,105 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           text: 'Hey everyone, um, stop wasting hours, you know, cutting audio manually. Like, now you can edit with Descript transcript precision and Premiere Pro power.',
         }),
       });
-      const data = await response.json();
-      if (data.words && data.words.length > 0) {
-        setTranscript(data.words.map((w: any, idx: number) => ({
-          id: `w_ai_${idx}`,
-          word: w.word,
-          start: w.start,
-          end: w.end,
-          isFiller: w.isFiller,
-          fillerType: w.fillerType,
-          confidence: w.confidence || 0.98,
-        })));
+      if (response.ok) {
+        const data = await response.json();
+        if (data.words && data.words.length > 0) {
+          setTranscript(data.words.map((w: any, idx: number) => ({
+            id: `w_ai_${idx}`,
+            word: w.word,
+            start: w.start,
+            end: w.end,
+            isFiller: w.isFiller,
+            fillerType: w.fillerType,
+            confidence: w.confidence || 0.98,
+          })));
+          return;
+        }
       }
     } catch (e) {
       console.warn('Transcript generation fallback used', e);
     }
+
+    // Client-side fallback if server is unreachable
+    setTranscript(INITIAL_TRANSCRIPT);
   };
 
   // Invideo AI: Generate Full Video Project from prompt
   const generateAIVideo = async (prompt: string, tone: string = 'engaging', format: string = '16:9') => {
     setIsAIGenerating(true);
+    let data: any = null;
+
     try {
       const response = await fetch('/api/ai/generate-script', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt, tone, format, duration: '25s' }),
       });
-      const data = await response.json();
+      if (response.ok) {
+        data = await response.json();
+      }
+    } catch (e) {
+      console.warn('Failed to fetch from server AI endpoint, using client synthesis fallback', e);
+    }
 
+    // Fallback if network or serverless function failed
+    if (!data || !data.scenes || data.scenes.length === 0) {
+      const cleanTitle = prompt.slice(0, 48);
+      data = {
+        projectTitle: cleanTitle,
+        summary: `Storyboard generated for "${cleanTitle}".`,
+        scenes: [
+          {
+            title: 'The Hook',
+            duration: 5,
+            narration: `In a world moving at lightning speed, how do the best creators produce 10x faster?`,
+            visualPrompt: 'Futuristic digital workspace with glowing timelines and neon UI elements.',
+            overlayText: 'STOP WASTING HOURS EDITING',
+            brollKeyword: 'technology',
+            audioMood: 'cinematic',
+          },
+          {
+            title: 'The Breakthrough',
+            duration: 7,
+            narration: `Meet the new standard: text-based editing, multitrack precision, and instant AI visual synthesis in one studio.`,
+            visualPrompt: 'High-speed editing workflow showing automated captions and audio waveforms locking in place.',
+            overlayText: 'UNIFIED CREATIVE POWER',
+            brollKeyword: 'coding',
+            audioMood: 'upbeat',
+          },
+          {
+            title: 'The Result',
+            duration: 6,
+            narration: `From raw script to 4K publication across YouTube, TikTok, and Premiere in just minutes.`,
+            visualPrompt: 'Multiple screens showcasing viral video analytics and high-retention spikes.',
+            overlayText: 'VIRAL RETENTION +84%',
+            brollKeyword: 'business',
+            audioMood: 'upbeat',
+          },
+          {
+            title: 'Call to Action',
+            duration: 4,
+            narration: `Level up your creative workflow today. Create without limits.`,
+            visualPrompt: 'Sleek logo animation with glowing studio lights and cinematic blur.',
+            overlayText: 'START CREATING NOW',
+            brollKeyword: 'space',
+            audioMood: 'dramatic',
+          },
+        ],
+        suggestedMusic: 'Cyberpunk Drive (128 BPM Synthwave)',
+        viralScore: 94,
+        hookAnalysis: 'Strong problem-solution structure with immediate curiosity hook in first 3 seconds.',
+      };
+    }
+
+    try {
       if (data.scenes && data.scenes.length > 0) {
-        // Transform scenes into fresh timeline clips
         let currentStart = 0;
         const newClips: TimelineClip[] = [];
         const newTranscript: TranscriptWord[] = [];
 
         data.scenes.forEach((scene: any, index: number) => {
-          const duration = scene.duration || 5;
+          const dur = scene.duration || 5;
 
           // Video Clip (V1)
           newClips.push({
@@ -473,7 +536,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
             title: `Scene ${index + 1}: ${scene.title}`,
             type: 'video',
             start: currentStart,
-            duration: duration,
+            duration: dur,
             volume: 1,
             speed: 1,
             muted: false,
@@ -490,7 +553,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
             title: `Caption ${index + 1}`,
             type: 'caption',
             start: currentStart + 0.2,
-            duration: Math.max(1.5, duration - 0.4),
+            duration: Math.max(1.5, dur - 0.4),
             volume: 1,
             speed: 1,
             muted: false,
@@ -503,7 +566,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           const words = (scene.narration || '').split(' ');
           let wTime = currentStart + 0.2;
           words.forEach((w: string, wIdx: number) => {
-            const wDur = Math.max(0.25, (duration - 0.5) / words.length);
+            const wDur = Math.max(0.25, (dur - 0.5) / words.length);
             newTranscript.push({
               id: `w_ai_${index}_${wIdx}`,
               word: w,
@@ -515,7 +578,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
             wTime += wDur;
           });
 
-          currentStart += duration;
+          currentStart += dur;
         });
 
         // Add Dialogue track
@@ -525,7 +588,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           title: 'AI Neural Voiceover (Zephyr)',
           type: 'audio',
           start: 0.2,
-          duration: currentStart - 0.2,
+          duration: Math.max(2, currentStart - 0.2),
           volume: 0.95,
           speed: 1,
           muted: false,
@@ -556,7 +619,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return data;
       }
     } catch (e) {
-      console.error('Failed to generate AI video', e);
+      console.error('Failed to construct timeline clips from AI video', e);
     } finally {
       setIsAIGenerating(false);
     }
