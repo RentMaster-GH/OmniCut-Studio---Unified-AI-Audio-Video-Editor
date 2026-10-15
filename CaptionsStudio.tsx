@@ -10,7 +10,7 @@ import {
   Wand2,
   Check,
 } from 'lucide-react';
-import { CaptionStyle } from '../../types';
+import { CaptionStyle } from '@/types';
 
 export const CaptionsStudio: React.FC = () => {
   const { captionStyle, setCaptionStyle, clips, currentTime } = useProject();
