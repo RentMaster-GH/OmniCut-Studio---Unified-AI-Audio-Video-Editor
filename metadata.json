@@ -1,0 +1,6 @@
+{
+  "name": "OmniCut Studio - Unified AI Audio & Video Editor",
+  "description": "Next-generation unified AI audio and video editor combining the power of Descript, VEED.io, Invideo AI, and Adobe Premiere Pro with real-time collaboration, multitrack mixing, transcript editing, and cloud exports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
