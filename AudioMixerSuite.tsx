@@ -12,7 +12,7 @@ import {
   Check,
   Disc,
 } from 'lucide-react';
-import { audioEngine } from '@/audioEngine';
+import { audioEngine } from '@/ProjectContext';
 
 export const AudioMixerSuite: React.FC = () => {
   const {
