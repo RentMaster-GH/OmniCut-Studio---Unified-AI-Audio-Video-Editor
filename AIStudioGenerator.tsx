@@ -12,7 +12,7 @@ import {
   Compass,
   Zap,
 } from 'lucide-react';
-import { audioEngine } from '../../utils/audioEngine';
+import { audioEngine } from '@/audioEngine';
 
 export const AIStudioGenerator: React.FC = () => {
   const { generateAIVideo, isAIGenerating, setActiveTab } = useProject();
