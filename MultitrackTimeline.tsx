@@ -1,15 +1,15 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { useProject } from '../../context/ProjectContext';
+import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
+import { useProject } from './ProjectContext';
 import {
   MousePointer,
   Scissors,
   Magnet,
   ZoomIn,
   ZoomOut,
-  Volume2,
-  VolumeX,
   Lock,
   Unlock,
+  Volume2,
+  VolumeX,
   Eye,
   EyeOff,
   Trash2,
@@ -18,9 +18,20 @@ import {
   Sparkles,
   Music,
   Video,
-  FileText,
+  Mic,
 } from 'lucide-react';
-import { TimelineClip } from '../../types';
+import { TimelineClip } from './types';
+
+const MIN_CLIP_DURATION = 0.15;
+const TRACK_HEADER_WIDTH = 160;
+const SNAP_THRESHOLD_PX = 12;
+
+function formatTime(seconds: number) {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  const ms = Math.floor((seconds % 1) * 10);
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${ms}`;
+}
 
 export const MultitrackTimeline: React.FC = () => {
   const {
@@ -47,35 +58,59 @@ export const MultitrackTimeline: React.FC = () => {
   } = useProject();
 
   const timelineRef = useRef<HTMLDivElement | null>(null);
-  const [isScrubbing, setIsScrubbing] = useState<boolean>(false);
-  const [draggedClipId, setDraggedClipId] = useState<string | null>(null);
-  const [dragStartX, setDragStartX] = useState<number>(0);
-  const [clipInitialStart, setClipInitialStart] = useState<number>(0);
+  const [isScrubbing, setIsScrubbing] = useState(false);
 
-  // Resize trimming state
+  // Drag state
+  const [draggedClipId, setDraggedClipId] = useState<string | null>(null);
+  const [dragStartX, setDragStartX] = useState(0);
+  const [clipInitialStart, setClipInitialStart] = useState(0);
+  const [snapLineX, setSnapLineX] = useState<number | null>(null);
+
+  // Trim state
   const [trimmingClipId, setTrimmingClipId] = useState<string | null>(null);
   const [trimHandle, setTrimHandle] = useState<'left' | 'right' | null>(null);
-  const [trimStartClientX, setTrimStartClientX] = useState<number>(0);
-  const [initialDuration, setInitialDuration] = useState<number>(0);
+  const [trimStartClientX, setTrimStartClientX] = useState(0);
+  const [trimInitialStart, setTrimInitialStart] = useState(0);
+  const [trimInitialDuration, setTrimInitialDuration] = useState(0);
 
-  const timelineWidth = Math.max(900, duration * zoom + 120);
+  const timelineWidth = Math.max(900, duration * zoom + TRACK_HEADER_WIDTH + 120);
 
-  // Convert mouse X position relative to timeline container to seconds
-  const getSecondsFromMouseX = (e: React.MouseEvent | MouseEvent) => {
+  // Snap points: playhead + all clip edges
+  const snapPoints = useMemo(() => {
+    const points: number[] = [0, currentTime, duration];
+    clips.forEach(c => {
+      points.push(c.start);
+      points.push(c.start + c.duration);
+    });
+    return Array.from(new Set(points)).sort((a, b) => a - b);
+  }, [clips, currentTime, duration]);
+
+  const getSecondsFromClientX = useCallback((clientX: number) => {
     if (!timelineRef.current) return 0;
     const rect = timelineRef.current.getBoundingClientRect();
-    const offsetX = e.clientX - rect.left + timelineRef.current.scrollLeft;
+    const scrollLeft = timelineRef.current.scrollLeft;
+    const offsetX = clientX - rect.left + scrollLeft - TRACK_HEADER_WIDTH;
     return Math.max(0, Math.min(duration, offsetX / zoom));
-  };
+  }, [zoom, duration]);
 
-  // Playhead scrubber mouse down
+  const getSnappedTime = useCallback((rawTime: number) => {
+    if (!snapping) return { time: rawTime, snappedAt: null as number | null };
+    const thresholdSec = SNAP_THRESHOLD_PX / zoom;
+    for (const p of snapPoints) {
+      if (Math.abs(rawTime - p) < thresholdSec) {
+        return { time: p, snappedAt: p };
+      }
+    }
+    return { time: rawTime, snappedAt: null };
+  }, [snapping, snapPoints, zoom]);
+
   const handleTimelineMouseDown = (e: React.MouseEvent) => {
-    // Only scrub if clicking ruler or blank lane
+    if ((e.target as HTMLElement).closest('[data-clip]')) return;
     if (activeTool === 'razor') {
       splitClipAtPlayhead();
       return;
     }
-    const sec = getSecondsFromMouseX(e);
+    const sec = getSecondsFromClientX(e.clientX);
     seek(sec);
     setIsScrubbing(true);
   };
@@ -83,18 +118,30 @@ export const MultitrackTimeline: React.FC = () => {
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (isScrubbing) {
-        const sec = getSecondsFromMouseX(e);
+        const sec = getSecondsFromClientX(e.clientX);
         seek(sec);
-      } else if (draggedClipId) {
-        const deltaSec = (e.clientX - dragStartX) / zoom;
-        const newStart = Math.max(0, clipInitialStart + deltaSec);
-        moveClip(draggedClipId, newStart);
-      } else if (trimmingClipId && trimHandle) {
+        return;
+      }
+
+      if (draggedClipId) {
+        const rawDelta = (e.clientX - dragStartX) / zoom;
+        const rawNewStart = Math.max(0, clipInitialStart + rawDelta);
+        const { time: snappedTime, snappedAt } = getSnappedTime(rawNewStart);
+        setSnapLineX(snappedAt!== null? snappedAt * zoom + TRACK_HEADER_WIDTH : null);
+        moveClip(draggedClipId, snappedTime);
+        return;
+      }
+
+      if (trimmingClipId && trimHandle) {
         const deltaSec = (e.clientX - trimStartClientX) / zoom;
         if (trimHandle === 'right') {
-          trimClip(trimmingClipId, 0, deltaSec);
-        } else if (trimHandle === 'left') {
-          trimClip(trimmingClipId, deltaSec, -deltaSec);
+          const newDur = Math.max(MIN_CLIP_DURATION, trimInitialDuration + deltaSec);
+          trimClip(trimmingClipId, 0, newDur - trimInitialDuration);
+        } else {
+          // left trim: move start forward, shrink duration
+          const maxTrim = trimInitialDuration - MIN_CLIP_DURATION;
+          const clampedDelta = Math.min(Math.max(deltaSec, -trimInitialStart), maxTrim);
+          trimClip(trimmingClipId, clampedDelta, -clampedDelta);
         }
       }
     };
@@ -104,25 +151,23 @@ export const MultitrackTimeline: React.FC = () => {
       setDraggedClipId(null);
       setTrimmingClipId(null);
       setTrimHandle(null);
+      setSnapLineX(null);
     };
 
     if (isScrubbing || draggedClipId || trimmingClipId) {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+      };
     }
+  }, [isScrubbing, draggedClipId, trimmingClipId, trimHandle, dragStartX, clipInitialStart, trimStartClientX, trimInitialDuration, trimInitialStart, getSecondsFromClientX, getSnappedTime, moveClip, trimClip, seek, zoom]);
 
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isScrubbing, draggedClipId, clipInitialStart, dragStartX, trimmingClipId, trimHandle, trimStartClientX, zoom]);
-
-  // Handle clicking a clip
   const handleClipClick = (e: React.MouseEvent, clip: TimelineClip) => {
     e.stopPropagation();
     if (activeTool === 'razor') {
-      // Split this specific clip at the click location
-      const sec = getSecondsFromMouseX(e);
+      const sec = getSecondsFromClientX(e.clientX);
       seek(sec);
       splitClipAtPlayhead(clip.id);
       return;
@@ -130,9 +175,11 @@ export const MultitrackTimeline: React.FC = () => {
     setSelectedClipId(clip.id);
   };
 
-  // Start clip dragging
   const handleClipDragStart = (e: React.MouseEvent, clip: TimelineClip) => {
     if (activeTool === 'razor') return;
+    const track = tracks.find(t => t.id === clip.trackId);
+    if (track?.isLocked) return;
+
     e.stopPropagation();
     setSelectedClipId(clip.id);
     setDraggedClipId(clip.id);
@@ -140,308 +187,225 @@ export const MultitrackTimeline: React.FC = () => {
     setClipInitialStart(clip.start);
   };
 
-  // Start trimming handle drag
   const handleTrimStart = (e: React.MouseEvent, clip: TimelineClip, handle: 'left' | 'right') => {
+    const track = tracks.find(t => t.id === clip.trackId);
+    if (track?.isLocked) return;
     e.stopPropagation();
     setTrimmingClipId(clip.id);
     setTrimHandle(handle);
     setTrimStartClientX(e.clientX);
-    setClipInitialStart(clip.start);
-    setInitialDuration(clip.duration);
+    setTrimInitialStart(clip.start);
+    setTrimInitialDuration(clip.duration);
   };
+
+  // Ruler ticks
+  const rulerTicks = useMemo(() => {
+    const interval = zoom < 30? 5 : zoom < 50? 2 : 1;
+    const ticks = [];
+    for (let t = 0; t <= duration; t += interval) {
+      ticks.push(t);
+    }
+    return ticks;
+  }, [duration, zoom]);
 
   return (
     <div className="w-full flex flex-col bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl select-none">
-      {/* Timeline Toolbar */}
-      <div className="flex items-center justify-between px-3 py-2 bg-zinc-900 border-b border-zinc-800 text-xs text-zinc-300">
-        <div className="flex items-center gap-1.5">
-          {/* Tool switchers */}
-          <div className="flex items-center bg-zinc-800/90 rounded-lg p-0.5 border border-zinc-700/60">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between px-3 py-2.5 bg-zinc-900 border-b border-zinc-800 text-xs">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center bg-zinc-800 rounded-lg p-0.5 border border-zinc-700/60">
             <button
               onClick={() => setActiveTool('select')}
-              title="Selection Tool (V)"
-              className={`p-1.5 rounded flex items-center gap-1 transition ${
-                activeTool === 'select' ? 'bg-blue-600 text-white font-medium shadow-sm' : 'text-zinc-400 hover:text-white'
-              }`}
+              className={`px-2.5 py-1.5 rounded-md flex items-center gap-1.5 transition ${activeTool === 'select'? 'bg-white text-black font-semibold shadow' : 'text-zinc-400 hover:text-white'}`}
             >
-              <MousePointer className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline text-[11px]">Select (V)</span>
+              <MousePointer className="w-3.5 h-3.5" /> Select
             </button>
             <button
               onClick={() => setActiveTool('razor')}
-              title="Razor / Split Tool (C)"
-              className={`p-1.5 rounded flex items-center gap-1 transition ${
-                activeTool === 'razor' ? 'bg-amber-600 text-white font-medium shadow-sm' : 'text-zinc-400 hover:text-white'
-              }`}
+              className={`px-2.5 py-1.5 rounded-md flex items-center gap-1.5 transition ${activeTool === 'razor'? 'bg-amber-500 text-black font-semibold shadow' : 'text-zinc-400 hover:text-white'}`}
             >
-              <Scissors className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline text-[11px]">Razor (C)</span>
+              <Scissors className="w-3.5 h-3.5" /> Razor
             </button>
           </div>
 
-          {/* Quick Cut at Playhead button */}
+          <div className="h-5 w-px bg-zinc-800" />
+
           <button
             onClick={() => splitClipAtPlayhead()}
-            title="Split Clip at Playhead (Ctrl+K)"
-            className="p-1.5 rounded-lg bg-zinc-800/70 hover:bg-zinc-700 border border-zinc-700/60 text-zinc-300 hover:text-white flex items-center gap-1 transition"
+            className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/60 text-zinc-300 hover:text-white flex items-center gap-1.5 transition"
           >
-            <Split className="w-3.5 h-3.5 text-amber-400" />
-            <span className="hidden sm:inline text-[11px]">Split Playhead</span>
+            <Split className="w-3.5 h-3.5 text-amber-400" /> Split at Playhead
           </button>
 
-          {/* Magnetic Snapping */}
           <button
             onClick={() => setSnapping(!snapping)}
-            title="Magnetic Snapping (S)"
-            className={`p-1.5 rounded-lg border flex items-center gap-1 transition ${
-              snapping ? 'bg-blue-500/20 border-blue-500/50 text-blue-300' : 'bg-zinc-800/50 border-zinc-700/50 text-zinc-400'
-            }`}
+            className={`p-2 rounded-lg border flex items-center gap-1.5 transition ${snapping? 'bg-blue-500/15 border-blue-500/40 text-blue-300' : 'bg-zinc-800 border-zinc-700/50 text-zinc-500'}`}
           >
-            <Magnet className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline text-[11px]">Snap</span>
+            <Magnet className="w-3.5 h-3.5" /> {snapping? 'Snap ON' : 'Snap OFF'}
           </button>
 
-          {/* Delete selected clip */}
           {selectedClipId && (
             <button
               onClick={() => deleteClip(selectedClipId)}
-              title="Delete Selected Clip (Del)"
-              className="p-1.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition flex items-center gap-1"
+              className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 flex items-center gap-1.5 transition"
             >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline text-[11px]">Delete</span>
+              <Trash2 className="w-3.5 h-3.5" /> Delete
             </button>
           )}
         </div>
 
-        {/* Timeline Zoom Controls */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setZoom(prev => Math.max(15, prev - 8))}
-            title="Zoom Out (-)"
-            className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition"
-          >
-            <ZoomOut className="w-3.5 h-3.5" />
-          </button>
-          <input
-            type="range"
-            min="15"
-            max="90"
-            value={zoom}
-            onChange={e => setZoom(parseInt(e.target.value, 10))}
-            className="w-20 accent-blue-500 h-1 bg-zinc-800 rounded cursor-pointer"
-          />
-          <button
-            onClick={() => setZoom(prev => Math.min(90, prev + 8))}
-            title="Zoom In (+)"
-            className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition"
-          >
-            <ZoomIn className="w-3.5 h-3.5" />
-          </button>
-          <span className="text-[10px] text-zinc-500 font-mono w-8 text-right">{zoom}px/s</span>
+        <div className="flex items-center gap-3">
+          <span className="text-[11px] text-zinc-500 font-mono">{formatTime(currentTime)} / {formatTime(duration)}</span>
+          <div className="flex items-center gap-1 bg-zinc-800 rounded-full p-0.5 border border-zinc-700">
+            <button onClick={() => setZoom(z => Math.max(15, z - 8))} className="p-1.5 rounded-full hover:bg-zinc-700 text-zinc-400">
+              <ZoomOut className="w-3.5 h-3.5" />
+            </button>
+            <span className="text-[10px] text-zinc-400 w-10 text-center font-mono">{zoom}px/s</span>
+            <button onClick={() => setZoom(z => Math.min(120, z + 8))} className="p-1.5 rounded-full hover:bg-zinc-700 text-zinc-400">
+              <ZoomIn className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Main Multitrack Workspace Area */}
-      <div className="flex w-full h-[320px] overflow-hidden bg-zinc-950">
-        {/* Track Headers Panel (Fixed Left) */}
-        <div className="w-48 sm:w-56 shrink-0 bg-zinc-900/90 border-r border-zinc-800 flex flex-col z-20 shadow-md">
-          {/* Header top ruler spacer */}
-          <div className="h-7 border-b border-zinc-800 px-3 flex items-center text-[10px] font-mono text-zinc-400 bg-zinc-950/60 uppercase tracking-wider">
-            Track / Channel
-          </div>
+      {/* Timeline Scroll Area */}
+      <div ref={timelineRef} onMouseDown={handleTimelineMouseDown} className="flex-1 overflow-auto bg-[#0a0a0a] relative custom-scrollbar">
+        <div style={{ width: timelineWidth }} className="relative flex flex-col">
 
-          {/* Track headers list */}
-          <div className="flex-1 overflow-y-auto">
-            {tracks.map(track => (
-              <div
-                key={track.id}
-                style={{ height: `${track.height}px` }}
-                className="flex items-center justify-between px-3 border-b border-zinc-800/80 bg-zinc-900/60 hover:bg-zinc-800/40 transition group"
-              >
-                <div className="flex items-center gap-2 truncate">
-                  <div
-                    className="w-2 h-2 rounded-full shrink-0"
-                    style={{ backgroundColor: track.color }}
-                  />
-                  <div className="flex flex-col truncate">
-                    <span className="text-[11px] font-medium text-zinc-200 truncate">
-                      {track.name}
-                    </span>
-                    <span className="text-[9px] text-zinc-400 uppercase tracking-tight">
-                      {track.type}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Track control buttons: Mute, Solo, Lock */}
-                <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100">
-                  <button
-                    onClick={() => toggleTrackMute(track.id)}
-                    title={track.muted ? 'Unmute' : 'Mute (M)'}
-                    className={`p-1 rounded text-[10px] transition ${
-                      track.muted
-                        ? 'bg-red-500/20 text-red-400 font-bold'
-                        : 'text-zinc-500 hover:text-zinc-300'
-                    }`}
-                  >
-                    M
-                  </button>
-                  <button
-                    onClick={() => toggleTrackSolo(track.id)}
-                    title={track.solo ? 'Solo On' : 'Solo (S)'}
-                    className={`p-1 rounded text-[10px] transition ${
-                      track.solo
-                        ? 'bg-amber-500/20 text-amber-400 font-bold'
-                        : 'text-zinc-500 hover:text-zinc-300'
-                    }`}
-                  >
-                    S
-                  </button>
-                  <button
-                    onClick={() => toggleTrackLock(track.id)}
-                    title={track.locked ? 'Unlock' : 'Lock Track'}
-                    className={`p-1 rounded text-[10px] transition ${
-                      track.locked
-                        ? 'bg-blue-500/20 text-blue-400'
-                        : 'text-zinc-500 hover:text-zinc-300'
-                    }`}
-                  >
-                    {track.locked ? <Lock className="w-2.5 h-2.5" /> : <Unlock className="w-2.5 h-2.5 opacity-40" />}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Scrollable Tracks & Timeline Canvas Area */}
-        <div
-          ref={timelineRef}
-          onMouseDown={handleTimelineMouseDown}
-          className="flex-1 overflow-x-auto overflow-y-hidden relative bg-zinc-950 cursor-crosshair select-none"
-        >
-          <div style={{ width: `${timelineWidth}px` }} className="relative h-full">
-            {/* 1. Time Ruler at Top */}
-            <div className="h-7 border-b border-zinc-800 bg-zinc-900/90 relative cursor-pointer flex items-center">
-              {Array.from({ length: Math.ceil(duration / 2) + 2 }).map((_, i) => {
-                const sec = i * 2;
-                const leftPos = sec * zoom;
-                return (
-                  <div
-                    key={sec}
-                    style={{ left: `${leftPos}px` }}
-                    className="absolute top-0 bottom-0 flex flex-col justify-between"
-                  >
-                    <span className="text-[10px] font-mono text-zinc-400 pl-1 select-none">
-                      {Math.floor(sec / 60)}:{(sec % 60).toString().padStart(2, '0')}
-                    </span>
-                    <div className="w-px h-2 bg-zinc-700" />
-                  </div>
-                );
-              })}
+          {/* Time Ruler */}
+          <div className="sticky top-0 z-20 flex h-8 bg-zinc-900 border-b border-zinc-800">
+            <div style={{ width: TRACK_HEADER_WIDTH }} className="shrink-0 bg-zinc-900 border-r border-zinc-800 flex items-center px-3 text-[10px] font-bold text-zinc-500 tracking-widest">
+              TRACKS
             </div>
+            <div className="relative flex-1">
+              {rulerTicks.map(t => (
+                <div key={t} style={{ left: t * zoom }} className="absolute top-0 bottom-0 flex flex-col justify-between py-1">
+                  <div className="w-px h-2 bg-zinc-700" />
+                  <span className="text-[9px] text-zinc-500 font-mono ml-1">{formatTime(t)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
 
-            {/* 2. Track Lanes */}
-            <div className="relative">
-              {tracks.map(track => {
-                const trackClips = clips.filter(c => c.trackId === track.id);
-                return (
-                  <div
-                    key={track.id}
-                    style={{ height: `${track.height}px` }}
-                    className={`relative w-full border-b border-zinc-800/60 ${
-                      track.muted ? 'opacity-40' : ''
-                    } bg-zinc-950/40`}
-                  >
-                    {/* Render clips on this track */}
-                    {trackClips.map(clip => {
-                      const isSelected = selectedClipId === clip.id;
-                      const left = clip.start * zoom;
-                      const width = clip.duration * zoom;
+          {/* Tracks */}
+          {tracks.map(track => {
+            const trackClips = clips.filter(c => c.trackId === track.id);
+            const isLocked = track.isLocked;
+            return (
+              <div key={track.id} className="flex h-[72px] border-b border-zinc-800/60 group/track">
+                {/* Track Header */}
+                <div style={{ width: TRACK_HEADER_WIDTH }} className="shrink-0 sticky left-0 z-10 bg-zinc-900/95 backdrop-blur border-r border-zinc-800 flex flex-col justify-center px-2.5 gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-300 truncate">
+                      {track.type === 'video'? <Video className="w-3.5 h-3.5 text-blue-400" /> : track.type === 'audio'? <Music className="w-3.5 h-3.5 text-emerald-400" /> : <Mic className="w-3.5 h-3.5 text-violet-400" />}
+                      <span className="truncate">{track.name}</span>
+                    </span>
+                    {isLocked && <Lock className="w-3 h-3 text-amber-500" />}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button onClick={(e) => { e.stopPropagation(); toggleTrackMute(track.id); }} className={`h-6 w-6 grid place-items-center rounded text-[10px] font-black tracking-wider border transition ${track.isMuted? 'bg-red-500/20 border-red-500/30 text-red-400' : 'bg-zinc-800 border-zinc-700/50 text-zinc-400 hover:text-white'}`}>
+                      {track.isMuted? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); toggleTrackSolo(track.id); }} className={`h-6 px-1.5 grid place-items-center rounded text-[10px] font-bold border transition ${track.isSolo? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' : 'bg-zinc-800 border-zinc-700/50 text-zinc-500 hover:text-zinc-300'}`}>
+                      S
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); toggleTrackLock(track.id); }} className="h-6 w-6 grid place-items-center rounded bg-zinc-800 border border-zinc-700/50 text-zinc-500 hover:text-white">
+                      {isLocked? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+                    </button>
+                    <div className="ml-auto flex items-center gap-1">
+                      <button className="h-6 w-6 grid place-items-center rounded bg-zinc-800 border border-zinc-700/50 text-zinc-500">
+                        {track.type === 'video'? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3 opacity-30" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
 
-                      return (
-                        <div
-                          key={clip.id}
-                          onClick={e => handleClipClick(e, clip)}
-                          onMouseDown={e => handleClipDragStart(e, clip)}
-                          style={{
-                            left: `${left}px`,
-                            width: `${Math.max(12, width)}px`,
-                            backgroundColor: clip.color ? `${clip.color}22` : '#3b82f622',
-                            borderColor: isSelected ? '#FFFFFF' : clip.color || '#3b82f6',
-                          }}
-                          className={`absolute top-1 bottom-1 rounded-md border text-xs overflow-hidden flex flex-col justify-between cursor-move shadow-md transition-all ${
-                            isSelected ? 'ring-2 ring-white/80 z-10' : 'hover:brightness-110'
-                          }`}
-                        >
-                          {/* Left Trim Handle */}
-                          <div
-                            onMouseDown={e => handleTrimStart(e, clip, 'left')}
-                            className="absolute left-0 top-0 bottom-0 w-2 hover:bg-white/40 cursor-ew-resize z-20"
-                          />
+                {/* Lane */}
+                <div className={`flex-1 relative ${isLocked? 'bg-zinc-900/30' : 'bg-zinc-950/40 hover:bg-zinc-900/20'} transition-colors`}>
+                  {trackClips.map(clip => {
+                    const isSelected = selectedClipId === clip.id;
+                    const isDragging = draggedClipId === clip.id;
+                    const isTrimming = trimmingClipId === clip.id;
+                    const isAI = (clip as any).isAIEnhanced;
 
-                          {/* Clip Header Content */}
-                          <div className="px-1.5 py-0.5 flex items-center justify-between text-[10px] font-medium text-white truncate pointer-events-none">
-                            <span className="truncate flex items-center gap-1 drop-shadow-sm">
-                              {track.type === 'audio' && <Music className="w-2.5 h-2.5 text-emerald-400 shrink-0" />}
-                              {track.type === 'video' && <Video className="w-2.5 h-2.5 text-blue-400 shrink-0" />}
-                              {track.type === 'caption' && <FileText className="w-2.5 h-2.5 text-amber-400 shrink-0" />}
-                              {clip.title}
-                            </span>
-                            <span className="font-mono text-[9px] text-zinc-300 opacity-80 shrink-0 ml-1">
-                              {clip.duration.toFixed(1)}s
-                            </span>
-                          </div>
-
-                          {/* Audio Waveform visualization if audio track */}
-                          {track.type === 'audio' && (
-                            <div className="flex-1 flex items-center px-1 gap-0.5 opacity-60 pointer-events-none">
-                              {Array.from({ length: Math.min(60, Math.floor(width / 3)) }).map((_, wIdx) => {
-                                const hPct = Math.sin(wIdx * 0.4 + clip.start) * 40 + 50;
-                                return (
-                                  <div
-                                    key={wIdx}
-                                    style={{ height: `${hPct}%` }}
-                                    className="w-0.5 bg-emerald-400/80 rounded-full shrink-0"
-                                  />
-                                );
-                              })}
-                            </div>
-                          )}
-
-                          {/* Captions Text Preview */}
-                          {track.type === 'caption' && clip.text && (
-                            <div className="px-1.5 pb-1 text-[9px] text-amber-200 truncate italic font-mono pointer-events-none">
-                              "{clip.text}"
-                            </div>
-                          )}
-
-                          {/* Right Trim Handle */}
-                          <div
-                            onMouseDown={e => handleTrimStart(e, clip, 'right')}
-                            className="absolute right-0 top-0 bottom-0 w-2 hover:bg-white/40 cursor-ew-resize z-20"
-                          />
+                    return (
+                      <div
+                        key={clip.id}
+                        data-clip
+                        onClick={(e) => handleClipClick(e, clip)}
+                        onMouseDown={(e) => handleClipDragStart(e, clip)}
+                        style={{
+                          left: clip.start * zoom,
+                          width: Math.max(24, clip.duration * zoom),
+                        }}
+                        className={`absolute top-2 bottom-2 rounded-lg border flex flex-col justify-between px-2.5 py-1.5 cursor-grab active:cursor-grabbing overflow-hidden transition-all select-none
+                          ${isDragging? 'z-20 shadow-2xl scale-[1.02] opacity-90' : 'z-0'}
+                          ${isSelected? 'ring-2 ring-white/90 border-white shadow-[0_0_20px_rgba(255,255,255,0.15)]' : 'border-transparent'}
+                          ${track.type === 'video'? 'bg-gradient-to-br from-blue-600 to-indigo-700 text-white' : track.type === 'audio'? 'bg-gradient-to-br from-emerald-600 to-teal-700 text-white' : 'bg-gradient-to-br from-violet-600 to-fuchsia-700 text-white'}
+                        `}
+                      >
+                        {/* Content */}
+                        <div className="flex items-center justify-between gap-2 min-w-0">
+                          <span className="flex items-center gap-1.5 text-[11px] font-semibold truncate">
+                            {track.type === 'video'? <Video className="w-3 h-3 opacity-80" /> : <Music className="w-3 h-3 opacity-80" />}
+                            <span className="truncate">{clip.name}</span>
+                          </span>
+                          {isAI && <Sparkles className="w-3 h-3 text-yellow-200 shrink-0" />}
                         </div>
-                      );
-                    })}
-                  </div>
-                );
-              })}
-            </div>
 
-            {/* 3. The Red Needle Playhead Indicator */}
-            <div
-              style={{ left: `${currentTime * zoom}px` }}
-              className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-30 pointer-events-none shadow-lg"
-            >
-              {/* Playhead handle head */}
-              <div className="w-3.5 h-4 bg-red-500 rounded-b-sm -ml-[6px] flex items-center justify-center shadow-md">
-                <div className="w-1 h-2 bg-white rounded-full opacity-80" />
+                        {/* Fake Waveform / Filmstrip */}
+                        <div className="flex-1 flex items-center gap-[2px] mt-1 opacity-60">
+                          {Array.from({ length: Math.min(24, Math.floor(clip.duration * 4)) }).map((_, i) => (
+                            <div key={i} className="flex-1 bg-white/60 rounded-full" style={{ height: `${20 + Math.sin(i * 1.5) * 40 + Math.random() * 30}%` }} />
+                          ))}
+                        </div>
+
+                        {/* Duration label */}
+                        <span className="absolute bottom-1 right-2 text-[9px] font-mono opacity-70">{clip.duration.toFixed(2)}s</span>
+
+                        {/* Trim handles */}
+                        <div onMouseDown={(e) => handleTrimStart(e, clip, 'left')} className="absolute left-0 top-0 bottom-0 w-2.5 bg-white/0 hover:bg-white/20 cursor-ew-resize flex items-center justify-center group/handle">
+                          <div className="w-0.5 h-6 bg-white/50 rounded-full opacity-0 group-hover/handle:opacity-100" />
+                        </div>
+                        <div onMouseDown={(e) => handleTrimStart(e, clip, 'right')} className="absolute right-0 top-0 bottom-0 w-2.5 bg-white/0 hover:bg-white/20 cursor-ew-resize flex items-center justify-center group/handle">
+                          <div className="w-0.5 h-6 bg-white/50 rounded-full opacity-0 group-hover/handle:opacity-100" />
+                        </div>
+
+                        {isTrimming && <div className="absolute inset-0 bg-white/10 pointer-events-none" />}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
+            );
+          })}
+
+          {/* Snap Line */}
+          {snapLineX!== null && (
+            <div style={{ left: snapLineX }} className="absolute top-8 bottom-0 w-px bg-blue-400 z-30 pointer-events-none">
+              <div className="w-1.5 h-1.5 bg-blue-400 rounded-full -translate-x-[2.5px] -translate-y-1" />
+            </div>
+          )}
+
+          {/* Playhead */}
+          <div style={{ left: currentTime * zoom + TRACK_HEADER_WIDTH }} className="absolute top-0 bottom-0 w-px bg-red-500 z-40 pointer-events-none">
+            <div className="sticky top-0 -translate-x-1/2 -translate-y-0 flex flex-col items-center">
+              <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent border-t-red-500" />
+              <div className="w-px h-[2000px] bg-red-500/80" />
+            </div>
+            <div className="absolute top-8 -translate-x-1/2 bg-red-500 text-white text-[10px] font-mono px-1.5 py-0.5 rounded shadow">
+              {formatTime(currentTime)}
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Footer Hint */}
+      <div className="px-3 py-1.5 bg-zinc-900 border-t border-zinc-800 flex items-center justify-between text-[10px] text-zinc-500">
+        <span className="flex items-center gap-2">
+          <span className="hidden md:inline">Hold <kbd className="px-1 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-zinc-300">Shift</kbd> to disable snap • <kbd className="px-1 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-zinc-300">C</kbd> Razor • <kbd className="px-1 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-zinc-300">V</kbd> Select</span>
+        </span>
+        <span className="flex items-center gap-1.5"><Sparkles className="w-3 h-3 text-violet-400" /> AI Auto-Cut Ready</span>
       </div>
     </div>
   );
