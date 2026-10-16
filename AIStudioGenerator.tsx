@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useProject } from '@/initialProject';
+import { useProject } from '@/ProjectContext';
 import { Loader2, Film, Wand2, RefreshCw, Shirt } from 'lucide-react';
 
 type StudioEngineMode = 'text-to-video' | 'video-to-video' | 'virtual-tryon';
