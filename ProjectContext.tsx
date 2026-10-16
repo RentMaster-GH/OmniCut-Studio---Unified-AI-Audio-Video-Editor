@@ -22,7 +22,7 @@ import {
   INITIAL_ANALYTICS,
   DEFAULT_CAPTION_STYLE,
   DEFAULT_COLOR_GRADING,
-} from '@/Project';
+} from "@/initialProject";
 import { audioEngine } from '@/audioEngine';
 
 interface ProjectContextType {
