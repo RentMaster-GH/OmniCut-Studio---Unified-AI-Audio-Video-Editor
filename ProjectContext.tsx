@@ -294,7 +294,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // Fallback with real MP4s (fixes zencdn.net / googleapis.com placeholders)
     await new Promise(r => setTimeout(r, 4000));
     const isCat = prompt.toLowerCase().includes('cat');
-    const fallbackSrc = isCat
+    const fallbackSrc = isCat ? 'https://zencdn.net' : 'https://googleapis.com';
   ? 'https://assets.mixkit.co/videos/preview/mixkit-cute-cat-lying-on-a-blanket-1480-large.mp4'
       : 'https://assets.mixkit.co/videos/preview/mixkit-digital-animation-of-futuristic-devices-99786-large.mp4';
 
