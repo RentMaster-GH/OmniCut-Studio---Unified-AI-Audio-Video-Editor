@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import React, { useState } from 'react';
+import { ProjectProvider, useProject } from '@/ProjectContext';
 import { HeaderNavBar } from '@/HeaderNavBar';
 import { VideoPlayerCanvas } from '@/VideoPlayerCanvas';
 import { MultitrackTimeline } from '@/MultitrackTimeline';
