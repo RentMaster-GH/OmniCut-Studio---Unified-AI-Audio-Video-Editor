@@ -107,9 +107,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const duration = Math.max(30,...clips.map(c => c.start + c.duration));
 
   useEffect(() => {
-    if (clips.length > 0 &&!selectedClipId) {
-      setSelectedClipId(clips[0].id);
-    }
+    if (clips.length > 0 &&!selectedClipId) setSelectedClipId(clips[0].id);
   }, [clips, selectedClipId]);
 
   useEffect(() => {
@@ -215,7 +213,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
   const generateTranscriptFromClips = useCallback(async () => setTranscript(INITIAL_TRANSCRIPT), []);
 
-  // FIXED: Synced clip ID pipeline + real MP4s from Mixkit CDN (no more root domain placeholders)
+  // FIXED: Synced ID + real MP4 CDN - replaces broken 'googleapis.com' / 'mixkit.co' root placeholders
   const generateAIVideo = useCallback(async (prompt: string) => {
     setIsAIGenerating(true);
     const uniformId = `clip-ai-${Date.now()}`;
@@ -264,8 +262,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       muted: false,
       color: '#9333EA',
       src: isCat
-     ? 'https://googleapis.com'/videos/preview/mixkit-cute-cat-lying-on-a-blanket-1480-large.mp4'
-        : 'https://googleapis.com'/videos/preview/mixkit-digital-animation-of-futuristic-devices-99786-large.mp4',
+    ? 'https://assets.mixkit.co/videos/preview/mixkit-cute-cat-lying-on-a-blanket-1480-large.mp4'
+        : 'https://assets.mixkit.co/videos/preview/mixkit-digital-animation-of-futuristic-devices-99786-large.mp4',
       text: isCat? 'The active cat successfully leaps across the fence boundary!' : `[AI Scene] ${prompt}`,
     } as any;
 
