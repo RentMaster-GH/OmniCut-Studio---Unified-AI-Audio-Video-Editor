@@ -20,7 +20,7 @@ export const VideoPlayerCanvas: React.FC = () => {
     
     if (isPlaying) {
       videoRef.current.play().catch((err) => {
-        console.log('Browser blocked autoplay or media stream initialization:', err);
+        console.log('Media initialization block checked:', err);
       });
     } else {
       videoRef.current.pause();
@@ -36,7 +36,6 @@ export const VideoPlayerCanvas: React.FC = () => {
     }
   }, [currentTime, activeVideoClip]);
 
-  // 🧬 CLEAN AR COSMETICS RENDER pipeline LOOP
   useEffect(() => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -59,7 +58,6 @@ export const VideoPlayerCanvas: React.FC = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Cleaned boolean assignment ensuring no stray regex character drops
       const hasFaceDetected = true; 
       if (hasFaceDetected) {
         if (detectedFaces !== 1) setDetectedFaces(1);
