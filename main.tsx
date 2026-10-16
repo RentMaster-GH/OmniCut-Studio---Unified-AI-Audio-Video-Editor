@@ -1,11 +1,16 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { ProjectProvider } from '@/ProjectContext'; // Ensure capital "P"
-import HeaderNavBar from '@/HeaderNavBar'; // Direct sibling import check
-import App from '@/App'; // Target App component directly
+import App from '@/App';
+import { ProjectProvider } from '@/ProjectContext';
 import '@/index.css';
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+const rootElement = document.getElementById('root');
+
+if (!rootElement) {
+  throw new Error('Required root DOM rendering element node container target was not found in the index document mapping layout.');
+}
+
+ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <ProjectProvider>
       <App />
