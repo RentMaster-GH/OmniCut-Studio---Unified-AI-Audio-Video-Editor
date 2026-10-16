@@ -1,7 +1,4 @@
-/**
- * OmniCut Studio Core Web Audio Production Engine
- */
-class AudioEngine {
+class AudioEngineController {
   private ctx: AudioContext | null = null;
   private isInitialized = false;
   private oscillatorInterval: any = null;
@@ -30,13 +27,43 @@ class AudioEngine {
     console.log(`AI Noise reduction & Studio Sound: ${active ? 'ACTIVE' : 'MUTED'}`);
   }
 
-  startAmbientPlayback(preset: string) {
+  playTimelineTick(frequency: number, duration: number, type: OscillatorType = 'sine') {
+    this.init();
     if (!this.ctx) return;
+    try {
+      const osc = this.ctx.createOscillator();
+      const gainNode = this.ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(frequency, this.ctx.currentTime);
+      gainNode.gain.setValueAtTime(0.04, this.ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+      osc.connect(gainNode);
+      gainNode.connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + duration);
+    } catch (e) {
+      console.log(e);
+    }
+  }
+
+  async speakNarration(text: string, voice = 'Zephyr') {
+    if (!('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const cleanText = text.replace(/[^a-zA-Z0-9\s.,!?]/g, '');
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      console.log(e);
+    }
+  }
+
+  startAmbientPlayback(preset: string) {
+    if (!this.ctx) this.init();
     this.stopAmbientPlayback();
 
     console.log(`Synthesizing live real-time audio track stream: ${preset}`);
     
-    // Smooth, cinematic open studio chord tracking frequencies (A minor harmony chord map)
     const freqs = [110.00, 164.81, 220.00, 261.63, 329.63, 440.00]; 
     
     this.oscillatorInterval = setInterval(() => {
@@ -70,4 +97,4 @@ class AudioEngine {
   }
 }
 
-export const audioEngine = new AudioEngine();
+export const audioEngine = new AudioEngineController();
