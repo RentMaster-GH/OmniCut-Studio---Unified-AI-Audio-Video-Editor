@@ -22,8 +22,8 @@ import {
   INITIAL_ANALYTICS,
   DEFAULT_CAPTION_STYLE,
   DEFAULT_COLOR_GRADING,
-} from '@/utils/initialProject';
-import { audioEngine } from '@/utils/audioEngine';
+} from '@/initialProject';
+import { audioEngine } from '@/audioEngine';
 
 interface ProjectContextType {
   currentTime: number; duration: number; isPlaying: boolean;
