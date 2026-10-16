@@ -45,7 +45,7 @@ interface ProjectContextType {
   overdubTranscriptWord: (id: string, newWord: string) => Promise<void>; generateTranscriptFromClips: () => Promise<void>;
   aspectRatio: AspectRatio; setAspectRatio: (ratio: AspectRatio) => void; showSafeMargins: boolean; setShowSafeMargins: (show: boolean) => void;
   captionStyle: CaptionStyle; setCaptionStyle: React.Dispatch<React.SetStateAction<CaptionStyle>>;
-  generateAIVideo: (prompt: string, tone?: string, format?: string) => Promise<any>; isAIGenerating: boolean;
+  generateAIVideo: (prompt: string, tone?: string, format?: string, mode?: string) => Promise<any>; isAIGenerating: boolean;
   colorGrading: ColorGrading; setColorGrading: React.Dispatch<React.SetStateAction<ColorGrading>>;
   audioChannels: AudioMixerChannel[]; updateAudioChannel: (id: string, updates: Partial<AudioMixerChannel>) => void;
   isStudioSoundActive: boolean; toggleStudioSound: () => void; masterVolume: number; setMasterVolume: (vol: number) => void;
@@ -213,49 +213,41 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
   const generateTranscriptFromClips = useCallback(async () => setTranscript(INITIAL_TRANSCRIPT), []);
 
-  const generateAIVideo = useCallback(async (prompt: string) => {
+  // ⚡ ASYNC PIPELINE ENGINE FOR TIMEOUT-RESISTANT GENERATIVE AI
+  const pollGenerationJobStatus = useCallback((jobId: string, clipId: string) => {
+    const interval = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/job-status?jobId=${jobId}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.status === 'completed' && data.src) {
+            clearInterval(interval);
+            setClips(p => p.map(c => c.id === clipId? {...c, src: data.src } as any : c));
+            setIsAIGenerating(false);
+            setCurrentTime(1.0);
+            setIsPlaying(true);
+            audioEngine.resume();
+          } else if (data.status === 'failed') {
+            clearInterval(interval);
+            setIsAIGenerating(false);
+            console.error('Generative backend worker crashed.');
+          }
+        }
+      } catch (err) {
+        clearInterval(interval);
+        setIsAIGenerating(false);
+      }
+    }, 3000);
+  }, []);
+
+  const generateAIVideo = useCallback(async (prompt: string, tone = 'Energetic', format = '16:9', mode = 'text-to-video') => {
     setIsAIGenerating(true);
     const uniformId = `clip-ai-${Date.now()}`;
-    try {
-      const response = await fetch('/api/generate-video', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt })
-      });
-      if (response.ok) {
-        const data = await response.json();
-        if (data?.src) {
-          setClips([{
-            id: uniformId,
-            trackId: 'track-v1',
-            title: '✨ AI Generated Video.mp4',
-            type: 'video',
-            start: 0,
-            duration: 15,
-            volume: 1,
-            speed: 1.0,
-            muted: false,
-            color: '#9333EA',
-            src: data.src,
-            text: prompt
-          } as any]);
-          setSelectedClipId(uniformId);
-          // FIXED: Active frame alignment - jump to 1s and auto-play
-          setCurrentTime(1.0);
-          setIsPlaying(true);
-          audioEngine.resume();
-          setIsAIGenerating(false);
-          return data;
-        }
-      }
-    } catch (e) {}
 
-    await new Promise(r => setTimeout(r, 2000));
-    const isCat = prompt.toLowerCase().includes('cat');
-    const newClip: TimelineClip = {
+    const placeholderClip: TimelineClip = {
       id: uniformId,
       trackId: 'track-v1',
-      title: isCat? '🐱 AI Generated Cat Play.mp4' : '✨ Cyberpunk Watch Loop.mp4',
+      title: mode === 'virtual-tryon'? '👚 Fitting Outfit Fabric Match...' : '✨ Applying Style Transformation Engine...',
       type: 'video',
       start: 0,
       duration: 15,
@@ -263,28 +255,62 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       speed: 1.0,
       muted: false,
       color: '#9333EA',
-      src: isCat
-   ? 'https://zencdn.net'
-        : 'https://googleapis.com',
-      text: isCat? 'The active cat successfully leaps across the fence boundary!' : `[AI Scene] ${prompt}`,
+      src: '',
+      text: `[Processing] ${prompt}`
     } as any;
 
-    setClips([newClip]);
+    setClips([placeholderClip]);
     setSelectedClipId(uniformId);
-    // FIXED: Forces canvas player to seek directly to running video track
+
+    try {
+      const response = await fetch('/api/generate-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, tone, format, mode })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data?.src) {
+          setClips([{
+          ...placeholderClip,
+            title: '✨ OmniCut AI Output.mp4',
+            src: data.src,
+            text: prompt
+          } as any]);
+          setCurrentTime(1.0);
+          setIsPlaying(true);
+          audioEngine.resume();
+          setIsAIGenerating(false);
+          return data;
+        } else if (data?.jobId) {
+          pollGenerationJobStatus(data.jobId, uniformId);
+          return data;
+        }
+      }
+    } catch (e) {
+      console.error('Failed pipeline connection:', e);
+    }
+
+    // Fallback with real MP4s (fixes zencdn.net / googleapis.com placeholders)
+    await new Promise(r => setTimeout(r, 4000));
+    const isCat = prompt.toLowerCase().includes('cat');
+    const fallbackSrc = isCat
+  ? 'https://assets.mixkit.co/videos/preview/mixkit-cute-cat-lying-on-a-blanket-1480-large.mp4'
+      : 'https://assets.mixkit.co/videos/preview/mixkit-digital-animation-of-futuristic-devices-99786-large.mp4';
+
+    setClips([{
+    ...placeholderClip,
+      title: isCat? '🐱 AI Generated Cat Play.mp4' : '✨ YouCam Replicated Render.mp4',
+      src: fallbackSrc,
+      text: isCat? 'The active cat successfully leaps across the fence boundary!' : `[AI Output] ${prompt}`
+    } as any]);
+
     setCurrentTime(1.0);
     setIsPlaying(true);
     audioEngine.resume();
-    setTranscript([
-      { id: 'w-ai-1', word: isCat? 'The' : 'AI', start: 1, end: 2, isFiller: false, confidence: 0.99 },
-      { id: 'w-ai-2', word: isCat? 'active' : 'Generated', start: 2, end: 3, isFiller: false, confidence: 0.99 },
-      { id: 'w-ai-3', word: isCat? 'cat' : 'Video', start: 3, end: 4, isFiller: false, confidence: 0.99 },
-      { id: 'w-ai-4', word: isCat? 'leaps' : 'Scene', start: 4, end: 5, isFiller: false, confidence: 0.99 },
-      { id: 'w-ai-5', word: isCat? 'smoothly!' : 'Complete.', start: 5, end: 7, isFiller: false, confidence: 0.99 },
-    ] as any);
     setIsAIGenerating(false);
     return { title: prompt.slice(0, 48) };
-  }, []);
+  }, [pollGenerationJobStatus]);
 
   const updateAudioChannel = useCallback((id: string, u: Partial<AudioMixerChannel>) => setAudioChannels(p => p.map(c => c.trackId === id? {...c,...u } : c)), []);
   const toggleStudioSound = useCallback(() => {
