@@ -264,8 +264,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       muted: false,
       color: '#9333EA',
       src: isCat
-     ? 'https://assets.mixkit.co/videos/preview/mixkit-cute-cat-lying-on-a-blanket-1480-large.mp4'
-        : 'https://assets.mixkit.co/videos/preview/mixkit-digital-animation-of-futuristic-devices-99786-large.mp4',
+     ? 'https://googleapis.com'/videos/preview/mixkit-cute-cat-lying-on-a-blanket-1480-large.mp4'
+        : 'https://googleapis.com'/videos/preview/mixkit-digital-animation-of-futuristic-devices-99786-large.mp4',
       text: isCat? 'The active cat successfully leaps across the fence boundary!' : `[AI Scene] ${prompt}`,
     } as any;
 
