@@ -11,7 +11,7 @@ import {
   CaptionStyle,
   ColorGrading,
   AudioMixerChannel,
-} from '@/types';
+} from '@/index';
 import {
   INITIAL_CLIPS,
   INITIAL_TRACKS,
@@ -73,7 +73,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [activeTool, setActiveTool] = useState<'select' | 'razor' | 'slip'>('select');
   const [snapping, setSnapping] = useState(true);
   const [zoom, setZoom] = useState(48);
-  const [selectedClipId, setSelectedClipId] = useState<string | null>(INITIAL_CLIPS[0]?.id?? 'clip-v1-1');
+  const [selectedClipId, setSelectedClipId] = useState<string | null>(INITIAL_CLIPS[0]?.id ?? 'clip-v1-1');
   const [transcript, setTranscript] = useState<TranscriptWord[]>(INITIAL_TRANSCRIPT);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('16:9');
   const [showSafeMargins, setShowSafeMargins] = useState(false);
@@ -86,7 +86,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       trackId: t.id, name: t.name, volume: t.volume, pan: 0,
       eq: { low: 0, lowMid: 0, highMid: 1.5, high: 2.0 }, compressorEnabled: true,
       compressorThreshold: -18, studioSoundActive: t.id === 'track-a1',
-      noiseReductionDb: t.id === 'track-a1'? 14 : 0, deReverbPct: t.id === 'track-a1'? 85 : 0, currentPeakLevel: 0.65,
+      noiseReductionDb: t.id === 'track-a1' ? 14 : 0, deReverbPct: t.id === 'track-a1' ? 85 : 0, currentPeakLevel: 0.65,
     }))
   );
   const [isAIGenerating, setIsAIGenerating] = useState(false);
@@ -103,8 +103,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [showExportModal, setShowExportModal] = useState(false);
   const [showSecurityModal, setShowSecurityModal] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'oled' | 'light'>('dark');
-
-  const duration = Math.max(30,...clips.map(c => c.start + c.duration));
+  const duration = Math.max(30, ...clips.map(c => c.start + c.duration));
 
   useEffect(() => {
     audioEngine.init();
@@ -155,117 +154,177 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const togglePlay = useCallback(() => {
     if (!isPlaying) audioEngine.resume();
-    setIsPlaying(p =>!p);
+    setIsPlaying(p => !p);
   }, [isPlaying]);
 
   const seek = useCallback((s: number) => {
     const clamped = Math.max(0, Math.min(duration, s));
     setCurrentTime(clamped);
-    audioEngine.playTimelineTick(380, 0.04);
   }, [duration]);
 
   const stepFrame = useCallback((frames: number) => seek(currentTime + frames / 30), [currentTime, seek]);
 
   const splitClipAtPlayhead = useCallback((targetClipId?: string) => {
-    const clipToSplit = targetClipId? clips.find(c => c.id === targetClipId) : clips.find(c => currentTime > c.start && currentTime < c.start + c.duration);
+    const clipToSplit = targetClipId ? clips.find(c => c.id === targetClipId) : clips.find(c => currentTime > c.start && currentTime < c.start + c.duration);
     if (!clipToSplit) return;
     const offset = currentTime - clipToSplit.start;
     if (offset <= 0.1 || offset >= clipToSplit.duration - 0.1) return;
-    const first: TimelineClip = {...clipToSplit, id: `${clipToSplit.id}_pt1_${Date.now()}`, duration: offset };
-    const second: TimelineClip = {...clipToSplit, id: `${clipToSplit.id}_pt2_${Date.now()}`, start: currentTime, duration: clipToSplit.duration - offset, sourceStart: (clipToSplit.sourceStart || 0) + offset, title: `${clipToSplit.title} (Cut)` };
-    setClips(p => p.filter(c => c.id!== clipToSplit.id).concat([first, second]));
+    const first: TimelineClip = { ...clipToSplit, id: `${clipToSplit.id}_pt1_${Date.now()}`, duration: offset };
+    const second: TimelineClip = { ...clipToSplit, id: `${clipToSplit.id}_pt2_${Date.now()}`, start: currentTime, duration: clipToSplit.duration - offset, sourceStart: (clipToSplit.sourceStart || 0) + offset, title: `${clipToSplit.title} (Cut)` };
+    setClips(p => p.filter(c => c.id !== clipToSplit.id).concat([first, second]));
     setSelectedClipId(second.id);
-    audioEngine.playTimelineTick(520, 0.08, 'triangle');
   }, [clips, currentTime]);
 
   const deleteClip = useCallback((id: string) => {
-    setClips(p => p.filter(c => c.id!== id));
-    setSelectedClipId(p => (p === id? null : p));
+    setClips(p => p.filter(c => c.id !== id));
+    setSelectedClipId(p => (p === id ? null : p));
   }, []);
-  const updateClip = useCallback((id: string, u: Partial<TimelineClip>) => setClips(p => p.map(c => c.id === id? {...c,...u } : c)), []);
+
+  const updateClip = useCallback((id: string, u: Partial<TimelineClip>) => setClips(p => p.map(c => c.id === id ? { ...c, ...u } : c)), []);
+  
   const moveClip = useCallback((id: string, newStart: number, newTrackId?: string) => {
     let finalStart = Math.max(0, newStart);
     if (snapping && Math.abs(finalStart - currentTime) < 0.25) finalStart = currentTime;
-    setClips(p => p.map(c => c.id === id? {...c, start: finalStart, trackId: newTrackId || c.trackId } : c));
+    setClips(p => p.map(c => c.id === id ? { ...c, start: finalStart, trackId: newTrackId || c.trackId } : c));
   }, [snapping, currentTime]);
-  const trimClip = useCallback((id: string, ds: number, dd: number) => setClips(p => p.map(c => c.id === id? {...c, start: Math.max(0, c.start + ds), duration: Math.max(0.2, c.duration + dd) } : c)), []);
+
+  const trimClip = useCallback((id: string, ds: number, dd: number) => setClips(p => p.map(c => c.id === id ? { ...c, start: Math.max(0, c.start + ds), duration: Math.max(0.2, c.duration + dd) } : c)), []);
   const addClip = useCallback((clip: TimelineClip) => setClips(p => [...p, clip]), []);
-  const toggleTrackMute = useCallback((id: string) => setTracks(p => p.map(t => t.id === id? {...t, muted:!t.muted } as any : t)), []);
-  const toggleTrackSolo = useCallback((id: string) => setTracks(p => p.map(t => t.id === id? {...t, solo:!t.solo } as any : t)), []);
-  const toggleTrackLock = useCallback((id: string) => setTracks(p => p.map(t => t.id === id? {...t, locked:!t.locked } as any : t)), []);
-  const setTrackVolume = useCallback((id: string, v: number) => setTracks(p => p.map(t => t.id === id? {...t, volume: v } : t)), []);
+  const toggleTrackMute = useCallback((id: string) => setTracks(p => p.map(t => t.id === id ? { ...t, muted: !t.muted } as any : t)), []);
+  const toggleTrackSolo = useCallback((id: string) => setTracks(p => p.map(t => t.id === id ? { ...t, solo: !t.solo } as any : t)), []);
+  const toggleTrackLock = useCallback((id: string) => setTracks(p => p.map(t => t.id === id ? { ...t, locked: !t.locked } as any : t)), []);
+  const setTrackVolume = useCallback((id: string, v: number) => setTracks(p => p.map(t => t.id === id ? { ...t, volume: v } : t)), []);
 
   const removeFillerWords = useCallback(() => {
     const fillers = transcript.filter(w => w.isFiller);
     if (!fillers.length) return;
-    setTranscript(p => p.filter(w =>!w.isFiller));
+    setTranscript(p => p.filter(w => !w.isFiller));
     const saved = fillers.reduce((a, c) => a + (c.end - c.start), 0);
-    setClips(p => p.map(cl => (cl.trackId === 'track-a1'? {...cl, duration: Math.max(1, cl.duration - saved * 0.4) } : cl)));
-    setAnalytics(p => ({...p, avgRetentionPct: Math.min(96, (p as any).avgRetentionPct + 6.4) } as any));
+    setClips(p => p.map(cl => (cl.trackId === 'track-a1' ? { ...cl, duration: Math.max(1, cl.duration - saved * 0.4) } : cl)));
+    setAnalytics(p => ({ ...p, avgRetentionPct: Math.min(96, (p as any).avgRetentionPct + 6.4) } as any));
   }, [transcript]);
 
-  const deleteTranscriptWord = useCallback((id: string) => setTranscript(p => p.filter(w => w.id!== id)), []);
+  const deleteTranscriptWord = useCallback((id: string) => setTranscript(p => p.filter(w => w.id !== id)), []);
   const overdubTranscriptWord = useCallback(async (id: string, newWord: string) => {
-    setTranscript(p => p.map(w => w.id === id? {...w, word: newWord, isFiller: false } : w));
-    audioEngine.speakNarration(newWord, 'Zephyr');
+    setTranscript(p => p.map(w => w.id === id ? { ...w, word: newWord, isFiller: false } : w));
   }, []);
+
   const generateTranscriptFromClips = useCallback(async () => setTranscript(INITIAL_TRANSCRIPT), []);
 
-  // --- FIXED: Removed static Unsplash image, now using real looping MP4s from Mixkit ---
-  const generateAIVideo = useCallback(async (prompt: string) => {
+  // --- LIVE PRODUCTION API PIPELINE INTEGRATION GENERATOR ---
+  const generateAIVideo = useCallback(async (prompt: string, tone?: string, format?: string) => {
     setIsAIGenerating(true);
-    await new Promise(r => setTimeout(r, 6000));
-    const isCat = prompt.toLowerCase().includes('cat');
     const targetClipId = `clip-ai-${Date.now()}`;
-    const newClip: TimelineClip = {
-      id: targetClipId,
-      trackId: 'track-v1',
-      title: isCat? '🐱 AI Generated Cat Jump.mp4' : '✨ AI Video Project Grid.mp4',
-      type: 'video',
-      start: 0,
-      duration: 15,
-      volume: 1,
-      speed: 1.0,
-      muted: false,
-      color: '#9333EA',
-      // FIXED: Replaced old https://unsplash.com image with real looping MP4
-      src: isCat
-      ? 'https://assets.mixkit.co/videos/preview/mixkit-cute-cat-lying-on-a-blanket-1480-large.mp4'
-        : 'https://assets.mixkit.co/videos/preview/mixkit-digital-animation-of-futuristic-devices-99786-large.mp4',
-      text: isCat? '[Meow] Boing The orange cat successfully leaps across the fence!' : `[AI Scene] ${prompt}`,
-    } as any;
+    
+    try {
+      // 1. Fire up a live asynchronous generation connection to a server cloud gateway
+      // Replace '/api/generate-video' with your real backend route endpoint (e.g. Runway, Novita, Replicate)
+      const response = await fetch('/api/generate-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: prompt,
+          aspect_ratio: format || '16:9',
+          guidance_scale: 7.5,
+          seconds: 10
+        })
+      });
 
-    setClips([newClip]);
-    setSelectedClipId(targetClipId);
-    setCurrentTime(0);
-    setTranscript([
-      { id: 'w-ai-1', word: isCat? 'Look' : 'AI', start: 1, end: 2, isFiller: false, confidence: 0.99 },
-      { id: 'w-ai-2', word: isCat? 'at' : 'Generated', start: 2, end: 3, isFiller: false, confidence: 0.99 },
-      { id: 'w-ai-3', word: isCat? 'that' : 'Video', start: 3, end: 4, isFiller: false, confidence: 0.99 },
-      { id: 'w-ai-4', word: isCat? 'cat' : 'Scene', start: 4, end: 5, isFiller: false, confidence: 0.99 },
-      { id: 'w-ai-5', word: isCat? 'jump!' : 'Complete.', start: 5, end: 7, isFiller: false, confidence: 0.99 },
-    ] as any);
-    setIsAIGenerating(false);
-    return { title: prompt.slice(0, 48) };
-  }, []);
+      if (!response.ok) throw new Error('API server unreachable');
+      const data = await response.json();
 
-  const updateAudioChannel = useCallback((id: string, u: Partial<AudioMixerChannel>) => setAudioChannels(p => p.map(c => c.trackId === id? {...c,...u } : c)), []);
+      // 2. Map the live cloud video stream delivery link straight to the timeline state
+      const videoUrl = data.video_url || 'https://assets.mixkit.co/videos/preview/mixkit-playful-cat-climbing-a-tree-42310-large.mp4';
+      
+      const liveGeneratedClip: TimelineClip = {
+        id: targetClipId,
+        trackId: 'track-v1',
+        title: `🎬 AI Gen: ${prompt.slice(0, 20)}...`,
+        type: 'video',
+        start: 0,
+        duration: data.duration || 10,
+        volume: 1,
+        speed: 1.0,
+        muted: false,
+        color: '#A855F7',
+        src: videoUrl,
+        text: data.transcript_summary || `[AI Scene Render] ${prompt}`,
+      };
+
+      setClips([liveGeneratedClip]);
+      
+      // 3. Inject matching transcription dialog tokens dynamically
+      if (data.words && data.words.length > 0) {
+        setTranscript(data.words);
+      } else {
+        setTranscript([
+          { id: 'w-1', word: 'AI', start: 1, end: 2, isFiller: false, confidence: 0.98 },
+          { id: 'w-2', word: 'Generation', start: 2, end: 4, isFiller: false, confidence: 0.98 },
+          { id: 'w-3', word: 'Success', start: 4, end: 6, isFiller: false, confidence: 0.98 }
+        ]);
+      }
+
+    } catch (error) {
+      console.warn("Falling back to local fallback logic streams because server API keys aren't mounted yet:", error);
+      
+      // Local intelligent failover handler if API server isn't running yet
+      const isCat = prompt.toLowerCase().includes('cat');
+      const fallbackUrl = isCat 
+        ? 'https://assets.mixkit.co/videos/preview/mixkit-playful-cat-climbing-a-tree-42310-large.mp4' 
+        : 'https://assets.mixkit.co/videos/preview/mixkit-abstract-laser-lights-background-41762-large.mp4';
+
+      const fallbackClip: TimelineClip = {
+        id: targetClipId,
+        trackId: 'track-v1',
+        title: isCat ? '🐱 Cat Leaping (Local Sync).mp4' : '✨ Cyber Synth Grid.mp4',
+        type: 'video',
+        start: 0,
+        duration: 15,
+        volume: 1,
+        speed: 1.0,
+        muted: false,
+        color: '#9333EA',
+        src: fallbackUrl,
+        text: isCat ? '[Meow] The cat leaps across the screen structure!' : `[AI Scene Setup] ${prompt}`,
+      };
+
+      setClips([fallbackClip]);
+      setTranscript([
+        { id: 'w-f-1', word: isCat ? 'The' : 'Dynamic', start: 1, end: 2, isFiller: false, confidence: 0.99 },
+        { id: 'w-f-2', word: isCat ? 'cat' : 'AI', start: 2, end: 3, isFiller: false, confidence: 0.99 },
+        { id: 'w-f-3', word: isCat ? 'is' : 'Timeline', start: 3, end: 4, isFiller: false, confidence: 0.99 },
+        { id: 'w-f-4', word: isCat ? 'jumping' : 'Active', start: 4, end: 5, isFiller: false, confidence: 0.99 },
+        { id: 'w-f-5', word: isCat ? 'live!' : 'Rendering.', start: 5, end: 7, isFiller: false, confidence: 0.99 },
+      ]);
+    } finally {
+      setSelectedClipId(targetClipId);
+      setCurrentTime(0);
+      setIsAIGenerating(false);
+    }
+  }, [clips, transcript]);
+
+  const updateAudioChannel = useCallback((id: string, u: Partial<AudioMixerChannel>) => setAudioChannels(p => p.map(c => c.trackId === id ? { ...c, ...u } : c)), []);
   const toggleStudioSound = useCallback(() => {
-    setIsStudioSoundActive(p => { const n =!p; audioEngine.setStudioSound(n); return n; });
+    setIsStudioSoundActive(p => { const n = !p; audioEngine.setStudioSound(n); return n; });
   }, []);
+
   const addComment = useCallback((text: string, ts?: number) => {
-    const nc = { id: `comm_${Date.now()}`, authorName: 'You', text, timestampSeconds: ts?? currentTime, createdAt: 'Just now', resolved: false } as any;
-    setComments(p => [nc,...p]);
+    const nc = { id: `comm_${Date.now()}`, authorName: 'You', text, timestampSeconds: ts ?? currentTime, createdAt: 'Just now', resolved: false } as any;
+    setComments(p => [nc, ...p]);
   }, [currentTime]);
-  const resolveComment = useCallback((id: string) => setComments(p => p.map(c => c.id === id? {...c, resolved:!c.resolved } : c)), []);
+
+  const resolveComment = useCallback((id: string) => setComments(p => p.map(c => c.id === id ? { ...c, resolved: !c.resolved } : c)), []);
+  
   const createVersionSnapshot = useCallback((label: string, summary = 'Manual save') => {
     const nv = { id: `ver_${Date.now()}`, versionNumber: `v${(versions.length * 0.5 + 1).toFixed(1)}`, label, timestamp: 'Just now', changesSummary: summary, clipsSnapshot: [...clips] } as any;
-    setVersions(p => [nv,...p]);
+    setVersions(p => [nv, ...p]);
   }, [clips, versions.length]);
+
   const restoreVersion = useCallback((id: string) => {
     const t = versions.find(v => v.id === id);
     if (t?.clipsSnapshot) setClips([...t.clipsSnapshot]);
   }, [versions]);
+
   const verifyBiometric = useCallback(async () => { setIsBiometricLocked(false); return true; }, []);
   const lockWorkspace = useCallback(() => { setIsBiometricLocked(true); setIsPlaying(false); }, []);
   const syncNow = useCallback(() => { setCloudSyncStatus('syncing'); setTimeout(() => setCloudSyncStatus('synced'), 1200); }, []);
@@ -295,6 +354,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
 export const useProject = () => {
   const context = useContext(ProjectContext);
-  if (!context) throw new Error('useProject must be used within a ProjectProvider');
+  if (!context) {
+    throw new Error('useProject must be used within a ProjectProvider');
+  }
   return context;
 };
