@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { useProject } from '@/ProjectContext';
-import { Loader2, Film, Wand2, RefreshCw, Shirt } from 'lucide-react';
+import { Sparkles, Loader2, Film, Wand2, ArrowRight, Shirt, RefreshCw } from 'lucide-react';
 
 type StudioEngineMode = 'text-to-video' | 'video-to-video' | 'virtual-tryon';
 
 export const AIStudioGenerator: React.FC = () => {
-  const { generateAIVideo, setActiveTab } = useProject();
+  const { generateAIVideo, isAIGenerating, setActiveTab } = useProject();
   const [activeEngineMode, setActiveEngineMode] = useState<StudioEngineMode>('text-to-video');
   const [prompt, setPrompt] = useState('Cinematic product reveal for an ultra-fast cyberpunk smartwatch with neon B-roll and punchy hook');
   const [targetAestheticStyle, setTargetAestheticStyle] = useState('Cyberpunk Anime');
-  const [targetOutfitType, setTargetOutfitType] = useState('Futuristic Cyberpunk Leather Jacket');
+  const [targetOutfitType, setTargetOutfitType] = useState('Futuristic Leather Jacket');
 
   const [localGenerating, setLocalGenerating] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
@@ -20,17 +20,17 @@ export const AIStudioGenerator: React.FC = () => {
     setLocalGenerating(true);
 
     if (activeEngineMode === 'text-to-video') {
-      setStatusMessage('🧠 AI Engine analyzing your prompt concept...');
-      setTimeout(() => setStatusMessage('📝 Writing professional cyberpunk script & hooks...'), 1500);
-      setTimeout(() => setStatusMessage('📹 Selecting neon B-roll scenes and synthesizing video tracks...'), 3000);
+      setStatusMessage('AI Engine analyzing your prompt concept...');
+      setTimeout(() => setStatusMessage('Writing professional cyberpunk script and hooks...'), 1500);
+      setTimeout(() => setStatusMessage('Selecting neon B-roll scenes and synthesizing video tracks...'), 3000);
     } else if (activeEngineMode === 'video-to-video') {
-      setStatusMessage('🧬 Extracting target source frame geometries & identity maps...');
-      setTimeout(() => setStatusMessage(`🎨 Running stable diffusion restyle to match: ${targetAestheticStyle}...`), 2000);
-      setTimeout(() => setStatusMessage('⏳ Resolving temporal frame flicker filtering parameters...'), 4000);
+      setStatusMessage('Extracting target source frame geometries and identity maps...');
+      setTimeout(() => setStatusMessage(`Running stable diffusion restyle to match: ${targetAestheticStyle}...`), 2000);
+      setTimeout(() => setStatusMessage('Resolving temporal frame flicker filtering parameters...'), 4000);
     } else {
-      setStatusMessage('👚 Scanning human skeletal tracking points and orientation nodes...');
-      setTimeout(() => setStatusMessage(`🧵 Extracting digital textile assets for: ${targetOutfitType}...`), 2000);
-      setTimeout(() => setStatusMessage('✨ Executing final multi-view physical garment cloth draping warp...'), 4000);
+      setStatusMessage('Scanning human skeletal tracking points and orientation nodes...');
+      setTimeout(() => setStatusMessage(`Extracting digital textile assets for: ${targetOutfitType}...`), 2000);
+      setTimeout(() => setStatusMessage('Executing final multi-view physical garment cloth draping warp...'), 4000);
     }
 
     setTimeout(async () => {
@@ -41,7 +41,7 @@ export const AIStudioGenerator: React.FC = () => {
            ? `Restyled video into ${targetAestheticStyle} theme blueprint`
             : `AI Virtual Try-On outfit swap into ${targetOutfitType}`;
 
-        await generateAIVideo(finalizedConceptPrompt, 'Energetic', '16:9');
+        await generateAIVideo(finalizedConceptPrompt, 'Energetic', '16:9', activeEngineMode);
       }
       setLocalGenerating(false);
       setStatusMessage('');
@@ -52,7 +52,6 @@ export const AIStudioGenerator: React.FC = () => {
   return (
     <div className="flex flex-col h-full bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl p-6">
 
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-900 pb-5 mb-6">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded bg-purple-500/20 text-purple-400 shadow-lg shadow-purple-500/10">
@@ -66,6 +65,7 @@ export const AIStudioGenerator: React.FC = () => {
 
         <div className="flex bg-zinc-900 p-1 rounded-xl border border-zinc-800 self-start sm:self-auto">
           <button
+            type="button"
             onClick={() =>!localGenerating && setActiveEngineMode('text-to-video')}
             className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition flex items-center gap-1.5 ${activeEngineMode === 'text-to-video'? 'bg-purple-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}
           >
@@ -73,6 +73,7 @@ export const AIStudioGenerator: React.FC = () => {
             <span>Prompt Studio</span>
           </button>
           <button
+            type="button"
             onClick={() =>!localGenerating && setActiveEngineMode('video-to-video')}
             className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition flex items-center gap-1.5 ${activeEngineMode === 'video-to-video'? 'bg-purple-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}
           >
@@ -80,6 +81,7 @@ export const AIStudioGenerator: React.FC = () => {
             <span>AI Restyler</span>
           </button>
           <button
+            type="button"
             onClick={() =>!localGenerating && setActiveEngineMode('virtual-tryon')}
             className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition flex items-center gap-1.5 ${activeEngineMode === 'virtual-tryon'? 'bg-purple-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}
           >
@@ -89,7 +91,6 @@ export const AIStudioGenerator: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Inputs */}
       <div className="flex-1 flex flex-col gap-5 max-w-2xl mx-auto w-full justify-center">
 
         {activeEngineMode === 'text-to-video' && (
@@ -126,7 +127,7 @@ export const AIStudioGenerator: React.FC = () => {
               </select>
             </div>
             <p className="text-[11px] text-zinc-500 leading-normal">
-              💡 <span className="font-semibold text-zinc-400">YouCam Translation Node:</span> This configuration translates active track layers frame-by-frame while utilizing temporal-consistency locks to stop image fluttering.
+              YouCam Translation Node: This configuration translates active track layers frame-by-frame while utilizing temporal-consistency locks to stop image fluttering patterns.
             </p>
           </div>
         )}
@@ -150,7 +151,7 @@ export const AIStudioGenerator: React.FC = () => {
               </select>
             </div>
             <p className="text-[11px] text-zinc-500 leading-normal">
-              💡 <span className="font-semibold text-zinc-400">YouCam VTO Module:</span> The system identifies person parameters on your timeline tracks and warps textile textures to their posture.
+              YouCam VTO Module: The system automatically identifies person parameters on your timeline tracks and warps the textile textures directly to their posture dimensions.
             </p>
           </div>
         )}
@@ -163,14 +164,14 @@ export const AIStudioGenerator: React.FC = () => {
         )}
 
         <button
+          type="button"
           onClick={handleGenerate}
           disabled={localGenerating || (activeEngineMode === 'text-to-video' &&!prompt.trim())}
           className="w-full py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:from-zinc-800 disabled:to-zinc-800 text-white disabled:text-zinc-500 font-bold text-xs shadow-xl shadow-purple-950/20 transition transform active:scale-[0.99] flex items-center justify-center gap-2"
         >
           {localGenerating? (
             <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Running Deep AI Studio Pipelines...</span>
+              Running Deep AI Studio Pipelines...
             </>
           ) : (
             <>
