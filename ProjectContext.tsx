@@ -22,8 +22,8 @@ import {
   INITIAL_ANALYTICS,
   DEFAULT_CAPTION_STYLE,
   DEFAULT_COLOR_GRADING,
-} from '@/initialProject';
-import { audioEngine } from '@/audioEngine';
+} from '@/utils/initialProject';
+import { audioEngine } from '@/utils/audioEngine';
 
 interface ProjectContextType {
   currentTime: number; duration: number; isPlaying: boolean;
@@ -113,7 +113,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     audioEngine.setStudioSound(isStudioSoundActive);
   }, []);
 
-  // FIXED Playback loop
   useEffect(() => {
     if (!isPlaying) {
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
@@ -144,9 +143,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     audioEngine.setMasterVolume(vol);
   }, []);
 
-  // --- FIXED: resume on user gesture ---
+  // --- FIXED: resume on click to bypass browser auto-play block ---
   const play = useCallback(() => {
-    audioEngine.resume(); // Fixes browser suspended audio block instantly on user tap gesture
+    audioEngine.resume();
     if (currentTime >= duration) setCurrentTime(0);
     setIsPlaying(true);
   }, [currentTime, duration]);
@@ -157,9 +156,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
 
   const togglePlay = useCallback(() => {
-    if (!isPlaying) audioEngine.resume(); // Safe trigger mirror for global spacebar/toggle hooks
-    setIsPlaying(p =>!p);
     if (!isPlaying) audioEngine.resume();
+    setIsPlaying(p =>!p);
   }, [isPlaying]);
 
   const seek = useCallback((s: number) => {
@@ -198,6 +196,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const toggleTrackSolo = useCallback((id: string) => setTracks(p => p.map(t => t.id === id? {...t, solo:!t.solo } as any : t)), []);
   const toggleTrackLock = useCallback((id: string) => setTracks(p => p.map(t => t.id === id? {...t, locked:!t.locked } as any : t)), []);
   const setTrackVolume = useCallback((id: string, v: number) => setTracks(p => p.map(t => t.id === id? {...t, volume: v } : t)), []);
+
   const removeFillerWords = useCallback(() => {
     const fillers = transcript.filter(w => w.isFiller);
     if (!fillers.length) return;
@@ -206,18 +205,51 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setClips(p => p.map(cl => (cl.trackId === 'track-a1'? {...cl, duration: Math.max(1, cl.duration - saved * 0.4) } : cl)));
     setAnalytics(p => ({...p, avgRetentionPct: Math.min(96, (p as any).avgRetentionPct + 6.4) } as any));
   }, [transcript]);
+
   const deleteTranscriptWord = useCallback((id: string) => setTranscript(p => p.filter(w => w.id!== id)), []);
   const overdubTranscriptWord = useCallback(async (id: string, newWord: string) => {
     setTranscript(p => p.map(w => w.id === id? {...w, word: newWord, isFiller: false } : w));
     audioEngine.speakNarration(newWord, 'Zephyr');
   }, []);
   const generateTranscriptFromClips = useCallback(async () => setTranscript(INITIAL_TRANSCRIPT), []);
+
+  // --- UPDATED: GENERATE AI VIDEO WORKFLOW HANDLER ---
   const generateAIVideo = useCallback(async (prompt: string) => {
     setIsAIGenerating(true);
-    await new Promise(r => setTimeout(r, 1000));
+    await new Promise(r => setTimeout(r, 6000));
+    const isCat = prompt.toLowerCase().includes('cat');
+    const targetClipId = `clip-ai-${Date.now()}`;
+    const newClip: TimelineClip = {
+      id: targetClipId,
+      trackId: 'track-v1',
+      title: isCat? '🐱 AI Generated Cat Jump.mp4' : '✨ AI Video Project Grid.mp4',
+      type: 'video',
+      start: 0,
+      duration: 15,
+      volume: 1,
+      speed: 1.0,
+      muted: false,
+      color: '#9333EA',
+      src: isCat
+       ? 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=800&auto=format&fit=crop&q=60'
+        : 'https://images.unsplash.com/photo-1536240478700-b869070f9279?w=800&auto=format&fit=crop&q=60',
+      text: isCat? '[Meow] Boing The orange cat successfully leaps across the fence!' : `[AI Scene] ${prompt}`,
+    } as any;
+
+    setClips([newClip]);
+    setSelectedClipId(targetClipId);
+    setCurrentTime(0);
+    setTranscript([
+      { id: 'w-ai-1', word: isCat? 'Look' : 'AI', start: 1, end: 2, isFiller: false, confidence: 0.99 },
+      { id: 'w-ai-2', word: isCat? 'at' : 'Generated', start: 2, end: 3, isFiller: false, confidence: 0.99 },
+      { id: 'w-ai-3', word: isCat? 'that' : 'Video', start: 3, end: 4, isFiller: false, confidence: 0.99 },
+      { id: 'w-ai-4', word: isCat? 'cat' : 'Scene', start: 4, end: 5, isFiller: false, confidence: 0.99 },
+      { id: 'w-ai-5', word: isCat? 'jump!' : 'Complete.', start: 5, end: 7, isFiller: false, confidence: 0.99 },
+    ] as any);
     setIsAIGenerating(false);
     return { title: prompt.slice(0, 48) };
   }, []);
+
   const updateAudioChannel = useCallback((id: string, u: Partial<AudioMixerChannel>) => setAudioChannels(p => p.map(c => c.trackId === id? {...c,...u } : c)), []);
   const toggleStudioSound = useCallback(() => {
     setIsStudioSoundActive(p => { const n =!p; audioEngine.setStudioSound(n); return n; });
@@ -243,13 +275,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     <ProjectContext.Provider
       value={{
         currentTime, duration, isPlaying,
-        play: () => { audioEngine.resume(); if (currentTime >= duration) setCurrentTime(0); setIsPlaying(true); },
-        pause: () => { setIsPlaying(false); audioEngine.stopAmbientPlayback(); },
-        togglePlay: () => {
-          if (!isPlaying) audioEngine.resume();
-          setIsPlaying(p =>!p);
-        },
-        seek, stepFrame,
+        play, pause, togglePlay, seek, stepFrame,
         tracks, clips, activeTool, setActiveTool, snapping, setSnapping, zoom, setZoom,
         selectedClipId, setSelectedClipId, splitClipAtPlayhead, deleteClip, updateClip, moveClip, trimClip, addClip,
         toggleTrackMute, toggleTrackSolo, toggleTrackLock, setTrackVolume,
@@ -270,8 +296,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
 export const useProject = () => {
   const context = useContext(ProjectContext);
-  if (!context) {
-    throw new Error('useProject must be used within a ProjectProvider');
-  }
+  if (!context) throw new Error('useProject must be used within a ProjectProvider');
   return context;
 };
