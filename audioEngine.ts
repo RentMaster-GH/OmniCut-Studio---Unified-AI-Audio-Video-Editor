@@ -8,7 +8,6 @@ class AudioEngine {
 
   init() {
     if (this.isInitialized) return;
-    // Create the native browser audio hardware bridge
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
     if (AudioContextClass) {
       this.ctx = new AudioContextClass();
@@ -24,12 +23,10 @@ class AudioEngine {
   }
 
   setMasterVolume(vol: number) {
-    // Volume adjustment hooks
     console.log(`Master volume tracking adjusted to: ${vol * 100}%`);
   }
 
   setStudioSound(active: boolean) {
-    // Studio sound enhancement filter hooks
     console.log(`AI Noise reduction & Studio Sound: ${active ? 'ACTIVE' : 'MUTED'}`);
   }
 
@@ -39,28 +36,26 @@ class AudioEngine {
 
     console.log(`Synthesizing live real-time audio track stream: ${preset}`);
     
-    // Generate a deep, beautiful cinematic ambient synth chord drone straight to the speakers
-    const freqs =; // A minor open studio harmony tracking frequencies
+    // Smooth, cinematic open studio chord tracking frequencies (A minor harmony chord map)
+    const freqs = [110.00, 164.81, 220.00, 261.63, 329.63, 440.00]; 
     
     this.oscillatorInterval = setInterval(() => {
       if (!this.ctx || this.ctx.state === 'suspended') return;
 
-      // Pick a random frequency from our studio chord map to mimic active tracks
       const baseFreq = freqs[Math.floor(Math.random() * freqs.length)];
       
       const osc = this.ctx.createOscillator();
       const gainNode = this.ctx.createGain();
 
-      osc.type = 'sine'; // Soft cinematic tone
+      osc.type = 'sine'; 
       osc.frequency.setValueAtTime(baseFreq, this.ctx.currentTime);
 
-      // Smooth volume fade-in and fade-out envelope so it sounds pleasant and doesn't pop
       gainNode.gain.setValueAtTime(0, this.ctx.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.04, this.ctx.currentTime + 0.5); // Safe low volume comfort index
+      gainNode.gain.linearRampToValueAtTime(0.04, this.ctx.currentTime + 0.5); 
       gainNode.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 4.0);
 
       osc.connect(gainNode);
-      gainNode.connect(this.ctx.destination); // Routes straight to physical laptop speaker hardware
+      gainNode.connect(this.ctx.destination); 
 
       osc.start(this.ctx.currentTime);
       osc.stop(this.ctx.currentTime + 4.0);
