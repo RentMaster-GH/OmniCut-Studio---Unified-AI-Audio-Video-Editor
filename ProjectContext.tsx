@@ -22,8 +22,8 @@ import {
   INITIAL_ANALYTICS,
   DEFAULT_CAPTION_STYLE,
   DEFAULT_COLOR_GRADING,
-} from '@/initialProject';
-import { audioEngine } from '@/audioEngine';
+} from '@/utils/initialProject';
+import { audioEngine } from '@/utils/audioEngine';
 
 interface ProjectContextType {
   currentTime: number; duration: number; isPlaying: boolean;
@@ -68,7 +68,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isPlaying, setIsPlaying] = useState(false);
   const animationFrameRef = useRef<number | null>(null);
   const lastTimeRef = useRef(0);
-
   const [tracks, setTracks] = useState<TimelineTrack[]>(INITIAL_TRACKS);
   const [clips, setClips] = useState<TimelineClip[]>(INITIAL_CLIPS);
   const [activeTool, setActiveTool] = useState<'select' | 'razor' | 'slip'>('select');
@@ -143,7 +142,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     audioEngine.setMasterVolume(vol);
   }, []);
 
-  // --- FIXED: resume on click to bypass browser auto-play block ---
   const play = useCallback(() => {
     audioEngine.resume();
     if (currentTime >= duration) setCurrentTime(0);
@@ -213,7 +211,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
   const generateTranscriptFromClips = useCallback(async () => setTranscript(INITIAL_TRANSCRIPT), []);
 
-  // --- UPDATED: GENERATE AI VIDEO WORKFLOW HANDLER ---
+  // --- FIXED: Removed static Unsplash image, now using real looping MP4s from Mixkit ---
   const generateAIVideo = useCallback(async (prompt: string) => {
     setIsAIGenerating(true);
     await new Promise(r => setTimeout(r, 6000));
@@ -230,9 +228,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       speed: 1.0,
       muted: false,
       color: '#9333EA',
+      // FIXED: Replaced old https://unsplash.com image with real looping MP4
       src: isCat
-       ? 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=800&auto=format&fit=crop&q=60'
-        : 'https://images.unsplash.com/photo-1536240478700-b869070f9279?w=800&auto=format&fit=crop&q=60',
+      ? 'https://assets.mixkit.co/videos/preview/mixkit-cute-cat-lying-on-a-blanket-1480-large.mp4'
+        : 'https://assets.mixkit.co/videos/preview/mixkit-digital-animation-of-futuristic-devices-99786-large.mp4',
       text: isCat? '[Meow] Boing The orange cat successfully leaps across the fence!' : `[AI Scene] ${prompt}`,
     } as any;
 
