@@ -1,192 +1,99 @@
 import React, { useState } from 'react';
 import { useProject } from '@/ProjectContext';
-import {
-  Sparkles,
-  Wand2,
-  Play,
-  Volume2,
-  Film,
-  Layers,
-  ArrowRight,
-  CheckCircle2,
-  Compass,
-  Zap,
-} from 'lucide-react';
-import { audioEngine } from '@/audioEngine';
+import { Sparkles, Loader2, Video, Film, Wand2, ArrowRight } from 'lucide-react';
 
 export const AIStudioGenerator: React.FC = () => {
   const { generateAIVideo, isAIGenerating, setActiveTab } = useProject();
-
-  const [prompt, setPrompt] = useState<string>('');
-  const [tone, setTone] = useState<string>('engaging');
-  const [format, setFormat] = useState<string>('16:9');
-  const [voice, setVoice] = useState<string>('Zephyr');
-  const [lastGeneratedTitle, setLastGeneratedTitle] = useState<string | null>(null);
-
-  const samplePrompts = [
-    'Create a 30s viral TikTok on why AI audio and video editors are replacing legacy NLE workflows.',
-    'Cinematic product reveal for an ultra-fast cyberpunk smartwatch with neon B-roll and punchy hook.',
-    'YouTube Shorts explaining how quantum computers break modern encryption with dramatic visuals.',
-    'Educational breakdown: 3 secrets high-retention creators use to keep viewers watching past 5 seconds.',
-  ];
-
-  const handleVoicePreview = () => {
-    audioEngine.speakNarration('Welcome to OmniCut Studio. Powered by Gemini AI for next generation storytelling.', voice);
-  };
+  const [prompt, setPrompt] = useState('Cinematic product reveal for an ultra-fast cyberpunk smartwatch with neon B-roll and punchy hook');
+  const [localGenerating, setLocalGenerating] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
-    const res = await generateAIVideo(prompt, tone, format);
-    if (res?.projectTitle) {
-      setLastGeneratedTitle(res.projectTitle);
-      // Auto-switch to editor view to see the generated storyboard
-      setTimeout(() => {
-        setActiveTab('editor');
-      }, 1000);
-    }
+    
+    setLocalGenerating(true);
+    setStatusMessage('🧠 AI Engine analyzing your prompt concept...');
+    
+    // Simulate generation checkpoints across the pipeline
+    setTimeout(() => {
+      setStatusMessage('✍️ Writing professional cyberpunk script & hooks...');
+    }, 1500);
+
+    setTimeout(() => {
+      setStatusMessage('🎨 Selecting neon B-roll scenes and synthesizing video tracks...');
+    }, 3000);
+
+    setTimeout(() => {
+      setStatusMessage('🎵 Mastering multitrack audio & equalizing timeline channels...');
+    }, 4500);
+
+    setTimeout(async () => {
+      // Execute the context video generator hook to populate timelines
+      if (generateAIVideo) {
+        await generateAIVideo(prompt, 'Energetic', '16:9');
+      }
+      setLocalGenerating(false);
+      setStatusMessage('');
+      // Route the user straight back to the Editor Studio workspace to see the results live!
+      setActiveTab('editor');
+    }, 6000);
   };
 
   return (
-    <div className="flex flex-col h-full bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl">
-      {/* Header */}
-      <div className="p-4 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <span className="p-2 rounded-lg bg-gradient-to-tr from-purple-600 to-blue-600 text-white shadow-md">
-            <Sparkles className="w-5 h-5" />
-          </span>
-          <div>
-            <h2 className="text-sm font-bold text-white tracking-wide flex items-center gap-1.5">
-              Invideo AI Prompt-to-Video Engine
-              <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded font-mono">
-                Gemini 3.8 Flash
-              </span>
-            </h2>
-            <p className="text-xs text-zinc-400">
-              Generate entire storyboard scenes, narration, B-roll cues, and subtitles in seconds
-            </p>
-          </div>
+    <div className="flex flex-col h-full bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl p-6">
+      {/* Upper Descriptive Header Banner */}
+      <div className="flex items-center gap-3 border-b border-zinc-900 pb-5 mb-6">
+        <div className="p-2 rounded bg-purple-500/20 text-purple-400 shadow-lg shadow-purple-500/10">
+          <Wand2 className="w-5 h-5" />
         </div>
-
-        {lastGeneratedTitle && (
-          <div className="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-950/50 border border-emerald-800/60 px-2.5 py-1 rounded-lg">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            <span>Assembled: <strong>{lastGeneratedTitle}</strong></span>
-          </div>
-        )}
+        <div>
+          <h2 className="text-sm font-bold text-white tracking-wide">Invideo AI Prompt Studio</h2>
+          <p className="text-xs text-zinc-400">Transform raw descriptive concepts into finished linear video projects instantly</p>
+        </div>
       </div>
 
-      <div className="flex-1 p-5 overflow-y-auto space-y-6 text-xs text-zinc-300 max-w-4xl mx-auto w-full">
-        {/* Main Prompt Input Box */}
-        <div className="space-y-2">
-          <label className="text-xs font-semibold text-zinc-300 flex items-center justify-between">
-            <span>Video Idea, Script or Topic:</span>
-            <span className="text-[11px] text-zinc-500">Supports scripts, bullet points, or creative concepts</span>
+      {/* Main Core Form Inputs */}
+      <div className="flex-1 flex flex-col gap-5 max-w-2xl mx-auto w-full justify-center">
+        <div className="flex flex-col gap-2">
+          <label className="text-[10px] font-mono uppercase tracking-wider font-bold text-zinc-500">
+            Describe your video layout idea, script theme or target topic:
           </label>
-          <div className="relative">
-            <textarea
-              rows={4}
-              placeholder="e.g. Create a 30s high-energy video for tech founders explaining why AI will transform media production in 2026..."
-              value={prompt}
-              onChange={e => setPrompt(e.target.value)}
-              className="w-full bg-zinc-900 border border-zinc-700/80 rounded-xl p-3.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 shadow-inner resize-none"
-            />
-            <div className="absolute right-3 bottom-3 flex items-center gap-2">
-              <span className="text-[11px] text-zinc-500 font-mono">{prompt.length} chars</span>
-            </div>
-          </div>
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            disabled={localGenerating}
+            className="w-full h-32 bg-zinc-900 border border-zinc-800 focus:border-purple-500/80 rounded-xl p-3.5 text-xs text-zinc-100 placeholder-zinc-600 focus:outline-none transition resize-none font-medium leading-relaxed"
+            placeholder="Type your creative concept here from scratch..."
+          />
         </div>
 
-        {/* Quick Suggestion Pills */}
-        <div className="space-y-1.5">
-          <span className="text-[11px] text-zinc-400 font-medium">Quick Creative Prompts:</span>
-          <div className="flex flex-wrap gap-2">
-            {samplePrompts.map((p, idx) => (
-              <button
-                key={idx}
-                onClick={() => setPrompt(p)}
-                className="text-left text-[11px] bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white px-2.5 py-1.5 rounded-lg transition"
-              >
-                "{p.slice(0, 48)}..."
-              </button>
-            ))}
+        {/* Dynamic Status Loading Micro-Banner */}
+        {localGenerating && (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-300 animate-pulse text-xs">
+            <Loader2 className="w-4 h-4 text-purple-400 animate-spin shrink-0" />
+            <span className="font-medium font-mono">{statusMessage}</span>
           </div>
-        </div>
+        )}
 
-        {/* Generation Settings Controls */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-zinc-900/60 p-4 rounded-xl border border-zinc-800">
-          {/* Tone Selector */}
-          <div>
-            <label className="text-zinc-400 font-medium block mb-1.5">Pacing & Tone:</label>
-            <select
-              value={tone}
-              onChange={e => setTone(e.target.value)}
-              className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-200"
-            >
-              <option value="engaging">Viral & High Energy (TikTok/Reels)</option>
-              <option value="cinematic">Cinematic & Dramatic (YouTube 4K)</option>
-              <option value="authoritative">Professional & Authoritative (B2B)</option>
-              <option value="casual">Casual & Conversational (Podcast)</option>
-            </select>
-          </div>
-
-          {/* Aspect Format */}
-          <div>
-            <label className="text-zinc-400 font-medium block mb-1.5">Target Platform Aspect:</label>
-            <select
-              value={format}
-              onChange={e => setFormat(e.target.value)}
-              className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-200"
-            >
-              <option value="16:9">16:9 Landscape (YouTube & Premiere)</option>
-              <option value="9:16">9:16 Vertical (TikTok & Reels & Shorts)</option>
-              <option value="1:1">1:1 Square (LinkedIn & X Feed)</option>
-            </select>
-          </div>
-
-          {/* AI Voice Selection with Preview */}
-          <div>
-            <label className="text-zinc-400 font-medium block mb-1.5 flex items-center justify-between">
-              <span>Neural Voiceover:</span>
-              <button
-                onClick={handleVoicePreview}
-                className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1"
-              >
-                <Volume2 className="w-3 h-3" /> Preview
-              </button>
-            </label>
-            <select
-              value={voice}
-              onChange={e => setVoice(e.target.value)}
-              className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-200"
-            >
-              <option value="Zephyr">Zephyr (Confident Studio Narrator)</option>
-              <option value="Kore">Kore (Warm & Articulate Professional)</option>
-              <option value="Puck">Puck (Energetic Youth Creator)</option>
-              <option value="Fenrir">Fenrir (Deep Cinematic Movie Voice)</option>
-              <option value="Charon">Charon (Authoritative Documentary)</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Generate Button */}
-        <div className="pt-2 flex items-center justify-end gap-3">
-          <button
-            onClick={() => setActiveTab('editor')}
-            className="px-4 py-2.5 rounded-xl border border-zinc-700 text-zinc-300 hover:bg-zinc-800 transition"
-          >
-            Cancel / Back to Timeline
-          </button>
-
-          <button
-            onClick={handleGenerate}
-            disabled={isAIGenerating || !prompt.trim()}
-            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white font-bold shadow-xl transition transform active:scale-95 flex items-center gap-2 disabled:opacity-50"
-          >
-            <Sparkles className={`w-4 h-4 ${isAIGenerating ? 'animate-spin' : ''}`} />
-            {isAIGenerating ? 'Synthesizing Storyboard & Clips...' : 'Generate Full Video Project'}
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
+        {/* The Generative Command Action Trigger Button */}
+        <button
+          onClick={handleGenerate}
+          disabled={localGenerating || !prompt.trim()}
+          className="w-full py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:from-zinc-800 disabled:to-zinc-800 text-white disabled:text-zinc-500 font-bold text-xs shadow-xl shadow-purple-950/20 transition transform active:scale-[0.99] flex items-center justify-center gap-2"
+        >
+          {localGenerating ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Synthesizing Full Video Elements...</span>
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-4 h-4 text-purple-300" />
+              <span>Generate Full Video Project</span>
+              <ArrowRight className="w-3.5 h-3.5 ml-1 opacity-60" />
+            </>
+          )}
+        </button>
       </div>
     </div>
   );
