@@ -259,8 +259,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setClips([placeholderClip]);
     setSelectedClipId(uniformId);
     try {
-      const response = await fetch(`/api/job-status?jobId=${jobId}`);
- {
+      const response = await fetch('/api/generate-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt, tone, format, mode })
