@@ -186,178 +186,165 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setClips(p => p.filter(c => c.id!== id));
     setSelectedClipId(p => (p === id? null : p));
   }, []);
-  const updateClip = useCallback((id: string, u: Partial<TimelineClip>) => setClips(p => p.map(c => c.id === id? {...c,...u } : c)), []);
-  const moveClip = useCallback((id: string, newStart: number, newTrackId?: string) => {
-    let finalStart = Math.max(0, newStart);
-    if (snapping && Math.abs(finalStart - currentTime) < 0.25) finalStart = currentTime;
-    setClips(p => p.map(c => c.id === id? {...c, start: finalStart, trackId: newTrackId || c.trackId } : c));
-  }, [snapping, currentTime]);
-  const trimClip = useCallback((id: string, ds: number, dd: number) => setClips(p => p.map(c => c.id === id? {...c, start: Math.max(0, c.start + ds), duration: Math.max(0.2, c.duration + dd) } : c)), []);
-  const addClip = useCallback((clip: TimelineClip) => setClips(p => [...p, clip]), []);
-  const toggleTrackMute = useCallback((id: string) => setTracks(p => p.map(t => t.id === id? {...t, muted:!t.muted } as any : t)), []);
-  const toggleTrackSolo = useCallback((id: string) => setTracks(p => p.map(t => t.id === id? {...t, solo:!t.solo } as any : t)), []);
-  const toggleTrackLock = useCallback((id: string) => setTracks(p => p.map(t => t.id === id? {...t, locked:!t.locked } as any : t)), []);
-  const setTrackVolume = useCallback((id: string, v: number) => setTracks(p => p.map(t => t.id === id? {...t, volume: v } : t)), []);
-  const removeFillerWords = useCallback(() => {
-    const fillers = transcript.filter(w => w.isFiller);
-    if (!fillers.length) return;
-    setTranscript(p => p.filter(w =>!w.isFiller));
-    const saved = fillers.reduce((a, c) => a + (c.end - c.start), 0);
-    setClips(p => p.map(cl => (cl.trackId === 'track-a1'? {...cl, duration: Math.max(1, cl.duration - saved * 0.4) } : cl)));
-    setAnalytics(p => ({...p, avgRetentionPct: Math.min(96, (p as any).avgRetentionPct + 6.4) } as any));
-  }, [transcript]);
-  const deleteTranscriptWord = useCallback((id: string) => setTranscript(p => p.filter(w => w.id!== id)), []);
-  const overdubTranscriptWord = useCallback(async (id: string, newWord: string) => {
-    setTranscript(p => p.map(w => w.id === id? {...w, word: newWord, isFiller: false } : w));
-    audioEngine.speakNarration(newWord, 'Zephyr');
-  }, []);
-  const generateTranscriptFromClips = useCallback(async () => setTranscript(INITIAL_TRANSCRIPT), []);
-
-  // ⚡ ASYNC PIPELINE ENGINE FOR TIMEOUT-RESISTANT GENERATIVE AI
-  const pollGenerationJobStatus = useCallback((jobId: string, clipId: string) => {
-    const interval = setInterval(async () => {
-      try {
-        const response = await fetch(`/api/job-status?jobId=${jobId}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.status === 'completed' && data.src) {
-            clearInterval(interval);
-            setClips(p => p.map(c => c.id === clipId? {...c, src: data.src } as any : c));
-            setIsAIGenerating(false);
-            setCurrentTime(1.0);
-            setIsPlaying(true);
-            audioEngine.resume();
-          } else if (data.status === 'failed') {
-            clearInterval(interval);
-            setIsAIGenerating(false);
-            console.error('Generative backend worker crashed.');
-          }
-        }
-      } catch (err) {
-        clearInterval(interval);
-        setIsAIGenerating(false);
-      }
-    }, 3000);
-  }, []);
-
-  const generateAIVideo = useCallback(async (prompt: string, tone = 'Energetic', format = '16:9', mode = 'text-to-video') => {
-    setIsAIGenerating(true);
-    const uniformId = `clip-ai-${Date.now()}`;
-
-    const placeholderClip: TimelineClip = {
-      id: uniformId,
-      trackId: 'track-v1',
-      title: mode === 'virtual-tryon'? '👚 Fitting Outfit Fabric Match...' : '✨ Applying Style Transformation Engine...',
-      type: 'video',
-      start: 0,
-      duration: 15,
-      volume: 1,
-      speed: 1.0,
-      muted: false,
-      color: '#9333EA',
-      src: '',
-      text: `[Processing] ${prompt}`
-    } as any;
-
-    setClips([placeholderClip]);
-    setSelectedClipId(uniformId);
-
-    try {
-      const response = await fetch('/api/generate-video', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, tone, format, mode })
-      });
-      if (response.ok) {
-        const data = await response.json();
-        if (data?.src) {
-          setClips([{
-          ...placeholderClip,
-            title: '✨ OmniCut AI Output.mp4',
-            src: data.src,
-            text: prompt
-          } as any]);
-          setCurrentTime(1.0);
-          setIsPlaying(true);
-          audioEngine.resume();
-          setIsAIGenerating(false);
-          return data;
-        } else if (data?.jobId) {
-          pollGenerationJobStatus(data.jobId, uniformId);
-          return data;
-        }
-      }
-    } catch (e) {
-      console.error('Failed pipeline connection:', e);
-    }
-
-    // Fallback with real MP4s (fixes zencdn.net / googleapis.com placeholders)
-    await new Promise(r => setTimeout(r, 4000));
-    const isCat = prompt.toLowerCase().includes('cat');
-    const fallbackSrc = isCat ? 'https://zencdn.net' : 'https://googleapis.com';
-  ? 'https://assets.mixkit.co/videos/preview/mixkit-cute-cat-lying-on-a-blanket-1480-large.mp4'
-      : 'https://assets.mixkit.co/videos/preview/mixkit-digital-animation-of-futuristic-devices-99786-large.mp4';
-
-    setClips([{
-    ...placeholderClip,
-      title: isCat? '🐱 AI Generated Cat Play.mp4' : '✨ YouCam Replicated Render.mp4',
-      src: fallbackSrc,
-      text: isCat? 'The active cat successfully leaps across the fence boundary!' : `[AI Output] ${prompt}`
-    } as any]);
-
-    setCurrentTime(1.0);
-    setIsPlaying(true);
-    audioEngine.resume();
-    setIsAIGenerating(false);
-    return { title: prompt.slice(0, 48) };
-  }, [pollGenerationJobStatus]);
-
-  const updateAudioChannel = useCallback((id: string, u: Partial<AudioMixerChannel>) => setAudioChannels(p => p.map(c => c.trackId === id? {...c,...u } : c)), []);
-  const toggleStudioSound = useCallback(() => {
-    setIsStudioSoundActive(p => { const n =!p; audioEngine.setStudioSound(n); return n; });
-  }, []);
-  const addComment = useCallback((text: string, ts?: number) => {
-    const nc = { id: `comm_${Date.now()}`, authorName: 'You', text, timestampSeconds: ts?? currentTime, createdAt: 'Just now', resolved: false } as any;
-    setComments(p => [nc,...p]);
-  }, [currentTime]);
-  const resolveComment = useCallback((id: string) => setComments(p => p.map(c => c.id === id? {...c, resolved:!c.resolved } : c)), []);
-  const createVersionSnapshot = useCallback((label: string, summary = 'Manual save') => {
-    const nv = { id: `ver_${Date.now()}`, versionNumber: `v${(versions.length * 0.5 + 1).toFixed(1)}`, label, timestamp: 'Just now', changesSummary: summary, clipsSnapshot: [...clips] } as any;
-    setVersions(p => [nv,...p]);
-  }, [clips, versions.length]);
-  const restoreVersion = useCallback((id: string) => {
-    const t = versions.find(v => v.id === id);
-    if (t?.clipsSnapshot) setClips([...t.clipsSnapshot]);
-  }, [versions]);
-  const verifyBiometric = useCallback(async () => { setIsBiometricLocked(false); return true; }, []);
-  const lockWorkspace = useCallback(() => { setIsBiometricLocked(true); setIsPlaying(false); }, []);
-  const syncNow = useCallback(() => { setCloudSyncStatus('syncing'); setTimeout(() => setCloudSyncStatus('synced'), 1200); }, []);
-
-  return (
-    <ProjectContext.Provider
-      value={{
-        currentTime, duration, isPlaying,
-        play, pause, togglePlay, seek, stepFrame,
-        tracks, clips, activeTool, setActiveTool, snapping, setSnapping, zoom, setZoom,
-        selectedClipId, setSelectedClipId, splitClipAtPlayhead, deleteClip, updateClip, moveClip, trimClip, addClip,
-        toggleTrackMute, toggleTrackSolo, toggleTrackLock, setTrackVolume,
-        transcript, removeFillerWords, deleteTranscriptWord, overdubTranscriptWord, generateTranscriptFromClips,
-        aspectRatio, setAspectRatio, showSafeMargins, setShowSafeMargins, captionStyle, setCaptionStyle,
-        generateAIVideo, isAIGenerating, colorGrading, setColorGrading, audioChannels, updateAudioChannel,
-        isStudioSoundActive, toggleStudioSound, masterVolume, setMasterVolume,
-        collaborators, comments, addComment, resolveComment, versions, restoreVersion, createVersionSnapshot,
-        userRole, setUserRole, analytics, isBiometricLocked, verifyBiometric, lockWorkspace,
-        isEndToEndEncrypted, encryptionFingerprint, cloudSyncStatus, syncNow,
-        activeTab, setActiveTab, showExportModal, setShowExportModal, showSecurityModal, setShowSecurityModal, theme, setTheme,
-      }}
-    >
-      {children}
-    </ProjectContext.Provider>
-  );
+const updateClip = useCallback((id: string, u: Partial) => setClips(p => p.map(c => c.id === id? {...c,...u } : c)), []);
+const moveClip = useCallback((id: string, newStart: number, newTrackId?: string) => {
+let finalStart = Math.max(0, newStart);
+if (snapping && Math.abs(finalStart - currentTime) < 0.25) finalStart = currentTime;
+setClips(p => p.map(c => c.id === id? {...c, start: finalStart, trackId: newTrackId || c.trackId } : c));
+}, [snapping, currentTime]);
+const trimClip = useCallback((id: string, ds: number, dd: number) => setClips(p => p.map(c => c.id === id? {...c, start: Math.max(0, c.start + ds), duration: Math.max(0.2, c.duration + dd) } : c)), []);
+const addClip = useCallback((clip: TimelineClip) => setClips(p => [...p, clip]), []);
+const toggleTrackMute = useCallback((id: string) => setTracks(p => p.map(t => t.id === id? {...t, muted:!t.muted } as any : t)), []);
+const toggleTrackSolo = useCallback((id: string) => setTracks(p => p.map(t => t.id === id? {...t, solo:!t.solo } as any : t)), []);
+const toggleTrackLock = useCallback((id: string) => setTracks(p => p.map(t => t.id === id? {...t, locked:!t.locked } as any : t)), []);
+const setTrackVolume = useCallback((id: string, v: number) => setTracks(p => p.map(t => t.id === id? {...t, volume: v } : t)), []);
+const removeFillerWords = useCallback(() => {
+const fillers = transcript.filter(w => w.isFiller);
+if (!fillers.length) return;
+setTranscript(p => p.filter(w =>!w.isFiller));
+const saved = fillers.reduce((a, c) => a + (c.end - c.start), 0);
+setClips(p => p.map(cl => (cl.trackId === 'track-a1'? {...cl, duration: Math.max(1, cl.duration - saved * 0.4) } : cl)));
+setAnalytics(p => ({...p, avgRetentionPct: Math.min(96, (p as any).avgRetentionPct + 6.4) } as any));
+}, [transcript]);
+const deleteTranscriptWord = useCallback((id: string) => setTranscript(p => p.filter(w => w.id!== id)), []);
+const overdubTranscriptWord = useCallback(async (id: string, newWord: string) => {
+setTranscript(p => p.map(w => w.id === id? {...w, word: newWord, isFiller: false } : w));
+audioEngine.speakNarration(newWord, 'Zephyr');
+}, []);
+const generateTranscriptFromClips = useCallback(async () => setTranscript(INITIAL_TRANSCRIPT), []);
+const pollGenerationJobStatus = useCallback((jobId: string, clipId: string) => {
+const interval = setInterval(async () => {
+try {
+const response = await fetch(/api/job-status?jobId=${jobId});
+if (response.ok) {
+const data = await response.json();
+if (data.status === 'completed' && data.src) {
+clearInterval(interval);
+setClips(p => p.map(c => c.id === clipId? {...c, src: data.src } as any : c));
+setIsAIGenerating(false);
+setCurrentTime(1.0);
+setIsPlaying(true);
+audioEngine.resume();
+} else if (data.status === 'failed') {
+clearInterval(interval);
+setIsAIGenerating(false);
+}
+}
+} catch (err) {
+clearInterval(interval);
+setIsAIGenerating(false);
+}
+}, 3000);
+}, []);
+const generateAIVideo = useCallback(async (prompt: string, tone = 'Energetic', format = '16:9', mode = 'text-to-video') => {
+setIsAIGenerating(true);
+const uniformId = clip-ai-${Date.now()};
+const placeholderClip: TimelineClip = {
+id: uniformId,
+trackId: 'track-v1',
+title: mode === 'virtual-tryon'? '👚 Fitting Outfit Fabric Match...' : '✨ Applying Style Transformation Engine...',
+type: 'video',
+start: 0,
+duration: 15,
+volume: 1,
+speed: 1.0,
+muted: false,
+color: '#9333EA',
+src: '',
+text: [Processing] ${prompt}
+} as any;
+setClips([placeholderClip]);
+setSelectedClipId(uniformId);
+try {
+const response = await fetch('/api/generate-video', {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({ prompt, tone, format, mode })
+});
+if (response.ok) {
+const data = await response.json();
+if (data?.src) {
+setClips([{
+...placeholderClip,
+title: '✨ OmniCut AI Output.mp4',
+src: data.src,
+text: prompt
+} as any]);
+setCurrentTime(1.0);
+setIsPlaying(true);
+audioEngine.resume();
+setIsAIGenerating(false);
+return data;
+}
+else if (data?.jobId) {
+pollGenerationJobStatus(data.jobId, uniformId);
+return data;
+}
+}
+} catch (e) {
+console.error('Failed processing pipeline connections:', e);
+}
+await new Promise(r => setTimeout(r, 4000));
+const isCat = prompt.toLowerCase().includes('cat');
+const fallbackSrc = isCat
+? 'https://assets.mixkit.co/videos/preview/mixkit-cute-cat-lying-on-a-blanket-1480-large.mp4'
+: 'googleapis.com';
+setClips([{
+...placeholderClip,
+title: isCat? '🐱 AI Generated Cat Play.mp4' : '✨ YouCam Replicated Render.mp4',
+src: fallbackSrc,
+text: isCat? 'The active cat successfully leaps across the fence boundary!' : [AI Output] ${prompt}
+} as any]);
+setCurrentTime(1.0);
+setIsPlaying(true);
+audioEngine.resume();
+setIsAIGenerating(false);
+return { title: prompt.slice(0, 48) };
+}, [pollGenerationJobStatus]);
+const updateAudioChannel = useCallback((id: string, u: Partial) => setAudioChannels(p => p.map(c => c.trackId === id? {...c,...u } : c)), []);
+const toggleStudioSound = useCallback(() => {
+setIsStudioSoundActive(p => { const n =!p; audioEngine.setStudioSound(n); return n; });
+}, []);
+const addComment = useCallback((text: string, ts?: number) => {
+const nc = { id: comm_${Date.now()}, authorName: 'You', text, timestampSeconds: ts?? currentTime, createdAt: 'Just now', resolved: false } as any;
+setComments(p => [nc,...p]);
+}, [currentTime]);
+const resolveComment = useCallback((id: string) => setComments(p => p.map(c => c.id === id? {...c, resolved:!c.resolved } : c)), []);
+const createVersionSnapshot = useCallback((label: string, summary = 'Manual save') => {
+const nv = { id: ver_${Date.now()}, versionNumber: v${(versions.length * 0.5 + 1).toFixed(1)}, label, timestamp: 'Just now', changesSummary: summary, clipsSnapshot: [...clips] } as any;
+setVersions(p => [nv,...p]);
+}, [clips, versions.length]);
+const restoreVersion = useCallback((id: string) => {
+const t = versions.find(v => v.id === id);
+if (t?.clipsSnapshot) setClips([...t.clipsSnapshot]);
+}, [versions]);
+const verifyBiometric = useCallback(async () => { setIsBiometricLocked(false); return true; }, []);
+const lockWorkspace = useCallback(() => { setIsBiometricLocked(true); setIsPlaying(false); }, []);
+const syncNow = useCallback(() => { setCloudSyncStatus('syncing'); setTimeout(() => setCloudSyncStatus('synced'), 1200); }, []);
+return (
+<ProjectContext.Provider
+value={{
+currentTime, duration, isPlaying,
+play, pause, togglePlay, seek, stepFrame,
+tracks, clips, activeTool, setActiveTool, snapping, setSnapping, zoom, setZoom,
+selectedClipId, setSelectedClipId, splitClipAtPlayhead, deleteClip, updateClip, moveClip, trimClip, addClip,
+toggleTrackMute, toggleTrackSolo, toggleTrackLock, setTrackVolume,
+transcript, removeFillerWords, deleteTranscriptWord, overdubTranscriptWord, generateTranscriptFromClips,
+aspectRatio, setAspectRatio, showSafeMargins, setShowSafeMargins, captionStyle, setCaptionStyle,
+generateAIVideo, isAIGenerating, colorGrading, setColorGrading, audioChannels, updateAudioChannel,
+isStudioSoundActive, toggleStudioSound, masterVolume, setMasterVolume,
+collaborators, comments, addComment, resolveComment, versions, restoreVersion, createVersionSnapshot,
+userRole, setUserRole, analytics, isBiometricLocked, verifyBiometric, lockWorkspace,
+isEndToEndEncrypted, encryptionFingerprint, cloudSyncStatus, syncNow,
+activeTab, setActiveTab, showExportModal, setShowExportModal, showSecurityModal, setShowSecurityModal, theme, setTheme,
+}}
+>
+{children}
+</ProjectContext.Provider>
+);
 };
-
 export const useProject = () => {
-  const context = useContext(ProjectContext);
-  if (!context) throw new Error('useProject must be used within a ProjectProvider');
-  return context;
+const context = useContext(ProjectContext);
+if (!context) throw new Error('useProject must be used within a ProjectProvider');
+return context;
 };
