@@ -22,7 +22,7 @@ import {
   INITIAL_ANALYTICS,
   DEFAULT_CAPTION_STYLE,
   DEFAULT_COLOR_GRADING,
-} from '@/initialProject';
+} from '@/initialProjec';
 import { audioEngine } from '@/audioEngine';
 
 interface ProjectContextType {
@@ -213,7 +213,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
   const generateTranscriptFromClips = useCallback(async () => setTranscript(INITIAL_TRANSCRIPT), []);
 
-  // FIXED: Synced ID + real MP4 CDN - replaces broken 'googleapis.com' / 'mixkit.co' root placeholders
   const generateAIVideo = useCallback(async (prompt: string) => {
     setIsAIGenerating(true);
     const uniformId = `clip-ai-${Date.now()}`;
@@ -241,7 +240,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
             text: prompt
           } as any]);
           setSelectedClipId(uniformId);
-          setCurrentTime(0);
+          // FIXED: Active frame alignment - jump to 1s and auto-play
+          setCurrentTime(1.0);
+          setIsPlaying(true);
+          audioEngine.resume();
           setIsAIGenerating(false);
           return data;
         }
@@ -262,14 +264,17 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       muted: false,
       color: '#9333EA',
       src: isCat
-    ? 'https://assets.mixkit.co/videos/preview/mixkit-cute-cat-lying-on-a-blanket-1480-large.mp4'
+   ? 'https://assets.mixkit.co/videos/preview/mixkit-cute-cat-lying-on-a-blanket-1480-large.mp4'
         : 'https://assets.mixkit.co/videos/preview/mixkit-digital-animation-of-futuristic-devices-99786-large.mp4',
       text: isCat? 'The active cat successfully leaps across the fence boundary!' : `[AI Scene] ${prompt}`,
     } as any;
 
     setClips([newClip]);
     setSelectedClipId(uniformId);
-    setCurrentTime(0);
+    // FIXED: Forces canvas player to seek directly to running video track
+    setCurrentTime(1.0);
+    setIsPlaying(true);
+    audioEngine.resume();
     setTranscript([
       { id: 'w-ai-1', word: isCat? 'The' : 'AI', start: 1, end: 2, isFiller: false, confidence: 0.99 },
       { id: 'w-ai-2', word: isCat? 'active' : 'Generated', start: 2, end: 3, isFiller: false, confidence: 0.99 },
