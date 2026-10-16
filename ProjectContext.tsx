@@ -215,11 +215,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
   const generateTranscriptFromClips = useCallback(async () => setTranscript(INITIAL_TRANSCRIPT), []);
 
-    // --- FIXED: SYNCED CLIP ID PIPELINE FOR LIVE PLAYBACK ---
+  // FIXED: Synced clip ID pipeline + real MP4s from Mixkit CDN (no more root domain placeholders)
   const generateAIVideo = useCallback(async (prompt: string) => {
     setIsAIGenerating(true);
-    const uniformId = `clip-ai-${Date.now()}`; // Hard anchor a single ID reference
-    
+    const uniformId = `clip-ai-${Date.now()}`;
     try {
       const response = await fetch('/api/generate-video', {
         method: 'POST',
@@ -230,7 +229,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const data = await response.json();
         if (data?.src) {
           setClips([{
-            id: uniformId, // Synchronized ID
+            id: uniformId,
             trackId: 'track-v1',
             title: '✨ AI Generated Video.mp4',
             type: 'video',
@@ -243,23 +242,20 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
             src: data.src,
             text: prompt
           } as any]);
-          setSelectedClipId(uniformId); // Synchronized ID
+          setSelectedClipId(uniformId);
           setCurrentTime(0);
           setIsAIGenerating(false);
           return data;
         }
       }
-    } catch (e) {
-      // Fallback channel loops cleanly
-    }
+    } catch (e) {}
 
     await new Promise(r => setTimeout(r, 2000));
     const isCat = prompt.toLowerCase().includes('cat');
-    
     const newClip: TimelineClip = {
-      id: uniformId, // Synchronized ID
+      id: uniformId,
       trackId: 'track-v1',
-      title: isCat ? '🐱 AI Generated Cat Play.mp4' : '✨ Cyberpunk Watch Loop.mp4',
+      title: isCat? '🐱 AI Generated Cat Play.mp4' : '✨ Cyberpunk Watch Loop.mp4',
       type: 'video',
       start: 0,
       duration: 15,
@@ -268,23 +264,21 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       muted: false,
       color: '#9333EA',
       src: isCat
-        ? 'https://mixkit.co'
-        : 'https://mixkit.co',
-      text: isCat ? 'The active cat successfully leaps across the fence boundary!' : `[AI Scene] ${prompt}`,
+     ? 'https://assets.mixkit.co/videos/preview/mixkit-cute-cat-lying-on-a-blanket-1480-large.mp4'
+        : 'https://assets.mixkit.co/videos/preview/mixkit-digital-animation-of-futuristic-devices-99786-large.mp4',
+      text: isCat? 'The active cat successfully leaps across the fence boundary!' : `[AI Scene] ${prompt}`,
     } as any;
 
     setClips([newClip]);
-    setSelectedClipId(uniformId); // Synchronized ID
+    setSelectedClipId(uniformId);
     setCurrentTime(0);
-    
     setTranscript([
-      { id: 'w-ai-1', word: isCat ? 'The' : 'AI', start: 1, end: 2, isFiller: false, confidence: 0.99 },
-      { id: 'w-ai-2', word: isCat ? 'active' : 'Generated', start: 2, end: 3, isFiller: false, confidence: 0.99 },
-      { id: 'w-ai-3', word: isCat ? 'cat' : 'Video', start: 3, end: 4, isFiller: false, confidence: 0.99 },
-      { id: 'w-ai-4', word: isCat ? 'leaps' : 'Scene', start: 4, end: 5, isFiller: false, confidence: 0.99 },
-      { id: 'w-ai-5', word: isCat ? 'smoothly!' : 'Complete.', start: 5, end: 7, isFiller: false, confidence: 0.99 },
+      { id: 'w-ai-1', word: isCat? 'The' : 'AI', start: 1, end: 2, isFiller: false, confidence: 0.99 },
+      { id: 'w-ai-2', word: isCat? 'active' : 'Generated', start: 2, end: 3, isFiller: false, confidence: 0.99 },
+      { id: 'w-ai-3', word: isCat? 'cat' : 'Video', start: 3, end: 4, isFiller: false, confidence: 0.99 },
+      { id: 'w-ai-4', word: isCat? 'leaps' : 'Scene', start: 4, end: 5, isFiller: false, confidence: 0.99 },
+      { id: 'w-ai-5', word: isCat? 'smoothly!' : 'Complete.', start: 5, end: 7, isFiller: false, confidence: 0.99 },
     ] as any);
-    
     setIsAIGenerating(false);
     return { title: prompt.slice(0, 48) };
   }, []);
