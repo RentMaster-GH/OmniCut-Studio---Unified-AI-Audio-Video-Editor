@@ -21,13 +21,13 @@ const resolveEntryPlugin: Plugin = {
     ];
     
     if (targets.includes(id)) {
-      const srcPath = path.resolve(__dirname, 'src/main.tsx');
-      if (fs.existsSync(srcPath)) {
-        return srcPath;
-      }
       const rootPath = path.resolve(__dirname, 'main.tsx');
       if (fs.existsSync(rootPath)) {
         return rootPath;
+      }
+      const srcPath = path.resolve(__dirname, 'src/main.tsx');
+      if (fs.existsSync(srcPath)) {
+        return srcPath;
       }
     }
     return null;
@@ -39,7 +39,8 @@ export default defineConfig(() => {
     plugins: [react(), tailwindcss(), resolveEntryPlugin],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, './src'),
+        // Points the '@' path shortcut directly to your flat root directory
+        '@': path.resolve(__dirname, '.'),
       },
     },
     build: {
