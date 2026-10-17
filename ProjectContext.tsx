@@ -307,7 +307,7 @@ const toggleStudioSound = useCallback(() => {
   setIsStudioSoundActive(p => { const n = !p; audioEngine.setStudioSound(n); return n; });
 }, []);
 const addComment = useCallback((text: string, ts?: number) => {
-  const nc = { id: comm_${Date.now()}, authorName: 'You', text, timestampSeconds: ts ?? currentTime, createdAt: 'Just now', resolved: false } as any;
+  const nc = { id: `comm_${Date.now()}`, authorName: 'You', text, timestampSeconds: ts ?? currentTime, createdAt: 'Just now', resolved: false } as any;
   setComments(p => [nc, ...p]);
 }, [currentTime]);
 const resolveComment = useCallback((id: string) => setComments(p => p.map(c => c.id === id ? { ...c, resolved: !c.resolved } : c)), []);
