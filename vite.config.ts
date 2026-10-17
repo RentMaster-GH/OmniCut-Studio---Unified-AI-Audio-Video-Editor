@@ -11,23 +11,21 @@ const __dirname = path.dirname(__filename);
 const resolveEntryPlugin: Plugin = {
   name: 'resolve-entry-plugin',
   resolveId(id) {
-    const targets = [
-      'src/main.tsx',
-      '/src/main.tsx',
-      './src/main.tsx',
-      'main.tsx',
-      '/main.tsx',
-      './main.tsx'
-    ];
-    
-    if (targets.includes(id)) {
-      const rootPath = path.resolve(__dirname, 'main.tsx');
-      if (fs.existsSync(rootPath)) {
-        return rootPath;
-      }
+    if (
+      id === '/src/main.tsx' ||
+      id === './src/main.tsx' ||
+      id === 'src/main.tsx' ||
+      id === '/main.tsx' ||
+      id === './main.tsx' ||
+      id === 'main.tsx'
+    ) {
       const srcPath = path.resolve(__dirname, 'src/main.tsx');
       if (fs.existsSync(srcPath)) {
         return srcPath;
+      }
+      const rootPath = path.resolve(__dirname, 'main.tsx');
+      if (fs.existsSync(rootPath)) {
+        return rootPath;
       }
     }
     return null;
@@ -39,18 +37,17 @@ export default defineConfig(() => {
     plugins: [react(), tailwindcss(), resolveEntryPlugin],
     resolve: {
       alias: {
-        // Points the '@' path shortcut directly to your flat root directory
         '@': path.resolve(__dirname, '.'),
       },
     },
     build: {
       target: 'esnext',
-      outDir: 'dist',
-      minify: 'esbuild',
-      sourcemap: false
     },
     server: {
+      // HMR is disabled in AI Studio via DISABLE_HMR env var.
+      // Do not modify—file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
+      // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
     },
   };

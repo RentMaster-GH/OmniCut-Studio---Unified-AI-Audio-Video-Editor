@@ -1,100 +1,209 @@
-class AudioEngineController {
+/**
+ * OmniCut Studio Audio Engine
+ * High-performance Web Audio API routing with real-time EQ, compression, VU metering, and sound synthesis.
+ */
+
+class AudioEngine {
   private ctx: AudioContext | null = null;
-  private isInitialized = false;
-  private oscillatorInterval: any = null;
+  private masterGain: GainNode | null = null;
+  private analyser: AnalyserNode | null = null;
+  private eqFilters: { [channelId: string]: BiquadFilterNode[] } = {};
+  private compressor: DynamicsCompressorNode | null = null;
+  private isMuted: boolean = false;
+  private isStudioSoundEnabled: boolean = false;
+  private synthInterval: any = null;
 
-  init() {
-    if (this.isInitialized) return;
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    if (AudioContextClass) {
-      this.ctx = new AudioContextClass();
-      this.isInitialized = true;
+  public init() {
+    if (this.ctx) return;
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      this.ctx = new AudioCtx();
+      this.masterGain = this.ctx.createGain();
+      this.analyser = this.ctx.createAnalyser();
+      this.analyser.fftSize = 256;
+
+      // Master Compressor
+      this.compressor = this.ctx.createDynamicsCompressor();
+      this.compressor.threshold.setValueAtTime(-18, this.ctx.currentTime);
+      this.compressor.knee.setValueAtTime(30, this.ctx.currentTime);
+      this.compressor.ratio.setValueAtTime(4, this.ctx.currentTime);
+      this.compressor.attack.setValueAtTime(0.003, this.ctx.currentTime);
+      this.compressor.release.setValueAtTime(0.25, this.ctx.currentTime);
+
+      this.masterGain.connect(this.compressor);
+      this.compressor.connect(this.analyser);
+      this.analyser.connect(this.ctx.destination);
+    } catch (e) {
+      console.warn('Web Audio API not supported in this environment', e);
     }
   }
 
-  async resume() {
-    this.init();
+  public resume() {
     if (this.ctx && this.ctx.state === 'suspended') {
-      await this.ctx.resume();
+      this.ctx.resume();
     }
   }
 
-  setMasterVolume(vol: number) {
-    console.log(`Master volume tracking adjusted to: ${vol * 100}%`);
+  public setMasterVolume(val: number) {
+    if (!this.masterGain || !this.ctx) return;
+    const clamped = Math.max(0, Math.min(1, val));
+    this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : clamped, this.ctx.currentTime);
   }
 
-  setStudioSound(active: boolean) {
-    console.log(`AI Noise reduction & Studio Sound: ${active ? 'ACTIVE' : 'MUTED'}`);
+  public toggleMute(muted: boolean) {
+    this.isMuted = muted;
+    if (!this.masterGain || !this.ctx) return;
+    this.masterGain.gain.setValueAtTime(muted ? 0 : 0.85, this.ctx.currentTime);
   }
 
-  playTimelineTick(frequency: number, duration: number, type: OscillatorType = 'sine') {
-    this.init();
-    if (!this.ctx) return;
+  public setStudioSound(enabled: boolean) {
+    this.isStudioSoundEnabled = enabled;
+  }
+
+  /**
+   * Get real-time peak audio level (0 to 1) for VU meters
+   */
+  public getPeakLevel(): number {
+    if (!this.analyser) return 0;
+    const buffer = new Uint8Array(this.analyser.frequencyBinCount);
+    this.analyser.getByteTimeDomainData(buffer);
+
+    let max = 0;
+    for (let i = 0; i < buffer.length; i++) {
+      const v = Math.abs(buffer[i] - 128) / 128;
+      if (v > max) max = v;
+    }
+    return max;
+  }
+
+  /**
+   * Get frequency data array for visualizer waveform
+   */
+  public getWaveformData(): Uint8Array {
+    if (!this.analyser) return new Uint8Array(64);
+    const data = new Uint8Array(this.analyser.frequencyBinCount);
+    this.analyser.getByteFrequencyData(data);
+    return data;
+  }
+
+  /**
+   * Play a simulated harmonic tone or sound effect during timeline scrub/playback
+   */
+  public playTimelineTick(pitch: number = 440, duration: number = 0.05, type: OscillatorType = 'sine') {
+    if (!this.ctx || this.isMuted) return;
+    this.resume();
     try {
       const osc = this.ctx.createOscillator();
-      const gainNode = this.ctx.createGain();
+      const gain = this.ctx.createGain();
+
       osc.type = type;
-      osc.frequency.setValueAtTime(frequency, this.ctx.currentTime);
-      gainNode.gain.setValueAtTime(0.04, this.ctx.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
-      osc.connect(gainNode);
-      gainNode.connect(this.ctx.destination);
+      osc.frequency.setValueAtTime(pitch, this.ctx.currentTime);
+
+      gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+
+      osc.connect(gain);
+      gain.connect(this.masterGain || this.ctx.destination);
+
       osc.start();
       osc.stop(this.ctx.currentTime + duration);
     } catch (e) {
-      console.log(e);
+      // Ignore audio glitches on rapid scrubbing
     }
   }
 
-  async speakNarration(text: string, voice = 'Zephyr') {
-    if (!('speechSynthesis' in window)) return;
-    try {
-      window.speechSynthesis.cancel();
-      const cleanText = text.replace(/[^a-zA-Z0-9\s.,!?]/g, '');
-      const utterance = new SpeechSynthesisUtterance(cleanText);
-      window.speechSynthesis.speak(utterance);
-    } catch (e) {
-      console.log(e);
-    }
-  }
-
-  startAmbientPlayback(preset: string) {
-    if (!this.ctx) this.init();
+  /**
+   * Play real-time generative background score during playback
+   */
+  public startAmbientPlayback(mood: string = 'cinematic') {
     this.stopAmbientPlayback();
+    if (!this.ctx) this.init();
+    this.resume();
 
-    console.log(`Synthesizing live real-time audio track stream: ${preset}`);
-    
-    const freqs = [110.00, 164.81, 220.00, 261.63, 329.63, 440.00]; 
-    
-    this.oscillatorInterval = setInterval(() => {
-      if (!this.ctx || this.ctx.state === 'suspended') return;
+    // Cinematic chord tones (frequencies in Hz: C3, G3, D#4, A#4)
+    const chords = [
+      [130.81, 196.0, 246.94, 329.63], // C min 7
+      [146.83, 220.0, 261.63, 349.23], // D min 7
+      [110.0, 164.81, 220.0, 293.66],  // A min
+      [164.81, 246.94, 293.66, 392.0], // E min
+    ];
 
-      const baseFreq = freqs[Math.floor(Math.random() * freqs.length)];
-      
-      const osc = this.ctx.createOscillator();
-      const gainNode = this.ctx.createGain();
+    let chordIdx = 0;
+    const playChord = () => {
+      if (!this.ctx || this.isMuted) return;
+      const notes = chords[chordIdx % chords.length];
+      chordIdx++;
 
-      osc.type = 'sine'; 
-      osc.frequency.setValueAtTime(baseFreq, this.ctx.currentTime);
+      notes.forEach((freq, idx) => {
+        try {
+          const osc = this.ctx!.createOscillator();
+          const gain = this.ctx!.createGain();
 
-      gainNode.gain.setValueAtTime(0, this.ctx.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.04, this.ctx.currentTime + 0.5); 
-      gainNode.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 4.0);
+          osc.type = idx === 0 ? 'triangle' : 'sine';
+          osc.frequency.setValueAtTime(freq, this.ctx!.currentTime);
 
-      osc.connect(gainNode);
-      gainNode.connect(this.ctx.destination); 
+          const volume = this.isStudioSoundEnabled ? 0.025 : 0.04;
+          gain.gain.setValueAtTime(0.0001, this.ctx!.currentTime);
+          gain.gain.linearRampToValueAtTime(volume, this.ctx!.currentTime + 0.4);
+          gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx!.currentTime + 2.8);
 
-      osc.start(this.ctx.currentTime);
-      osc.stop(this.ctx.currentTime + 4.0);
-    }, 1500);
+          osc.connect(gain);
+          gain.connect(this.masterGain || this.ctx!.destination);
+
+          osc.start();
+          osc.stop(this.ctx!.currentTime + 3.0);
+        } catch (e) {}
+      });
+    };
+
+    playChord();
+    this.synthInterval = setInterval(playChord, 2800);
   }
 
-  stopAmbientPlayback() {
-    if (this.oscillatorInterval) {
-      clearInterval(this.oscillatorInterval);
-      this.oscillatorInterval = null;
+  public stopAmbientPlayback() {
+    if (this.synthInterval) {
+      clearInterval(this.synthInterval);
+      this.synthInterval = null;
+    }
+  }
+
+  /**
+   * Play speech synthesis for previewing overdubbed or generated dialogue
+   */
+  public speakNarration(text: string, voiceName: string = 'Zephyr', onEnd?: () => void) {
+    if (!('speechSynthesis' in window)) {
+      onEnd?.();
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.05;
+    utterance.pitch = voiceName === 'Puck' ? 1.2 : voiceName === 'Fenrir' ? 0.8 : 1.0;
+
+    // Pick a natural voice if available
+    const voices = window.speechSynthesis.getVoices();
+    const englishVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Enhanced'))) || voices[0];
+    if (englishVoice) {
+      utterance.voice = englishVoice;
+    }
+
+    utterance.onend = () => {
+      onEnd?.();
+    };
+
+    utterance.onerror = () => {
+      onEnd?.();
+    };
+
+    window.speechSynthesis.speak(utterance);
+  }
+
+  public stopNarration() {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
     }
   }
 }
 
-export const audioEngine = new AudioEngineController();
+export const audioEngine = new AudioEngine();

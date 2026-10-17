@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { useProject } from '@/ProjectContext';
+import { useProject } from '../../context/ProjectContext';
 import {
   MousePointer,
   Scissors,
@@ -20,7 +20,7 @@ import {
   Video,
   FileText,
 } from 'lucide-react';
-import { TimelineClip } from '@/types';
+import { TimelineClip } from '../../types';
 
 export const MultitrackTimeline: React.FC = () => {
   const {

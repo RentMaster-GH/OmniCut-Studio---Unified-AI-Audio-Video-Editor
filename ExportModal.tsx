@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useProject } from '@/ProjectContext';
+import { useProject } from '../../context/ProjectContext';
 import {
   X,
   Download,
@@ -16,7 +16,7 @@ import {
   ArrowRight,
   Loader2,
 } from 'lucide-react';
-import { EXPORT_PRESETS } from '@/initialProject';
+import { EXPORT_PRESETS } from '../../utils/initialProject';
 import { ExportPreset } from '../../types';
 
 export const ExportModal: React.FC = () => {
