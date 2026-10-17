@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { useProject } from '../../context/ProjectContext';
+import { useProject } from "./ProjectContext";
 import {
   Play,
   Pause,
@@ -18,8 +18,8 @@ import {
   Settings,
   Film,
 } from 'lucide-react';
-import { drawLiveGenerativeScene } from '../../utils/videoLibrary';
-import { ColorGrading } from '../../types';
+import { drawLiveGenerativeScene } from "./videoLibrary";
+import { ColorGrading } from "./types";
 
 function getCssFilter(colorGrading: ColorGrading): string {
   const brightness = 1 + (colorGrading.brightness || 0) / 100;
