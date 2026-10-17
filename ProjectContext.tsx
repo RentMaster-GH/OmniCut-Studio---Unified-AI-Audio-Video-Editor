@@ -241,7 +241,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
   const generateAIVideo = useCallback(async (prompt: string, tone = 'Energetic', format = '16:9', mode = 'text-to-video') => {
     setIsAIGenerating(true);
-    const uniformId = clip-ai-${Date.now()};
+    const uniformId = `clip-ai-${Date.now()}`;
     const placeholderClip: TimelineClip = {
       id: uniformId,
       trackId: 'track-v1',
