@@ -287,4 +287,10 @@ AI Voice Profile:
       {activeEngineMode === 'virtual-tryon' && 'Execute Digital Garment Swap'}
     </>
   )}
-</button>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
