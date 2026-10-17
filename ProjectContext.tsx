@@ -218,7 +218,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const pollGenerationJobStatus = useCallback((jobId: string, clipId: string) => {
     const interval = setInterval(async () => {
       try {
-        const response = await fetch(/api/job-status?jobId=${jobId});
+        const response = await fetch(`/api/job-status?jobId=${jobId}`);
         if (response.ok) {
           const data = await response.json();
           if (data.status === 'completed' && data.src) {
