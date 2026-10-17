@@ -312,7 +312,7 @@ const addComment = useCallback((text: string, ts?: number) => {
 }, [currentTime]);
 const resolveComment = useCallback((id: string) => setComments(p => p.map(c => c.id === id ? { ...c, resolved: !c.resolved } : c)), []);
 const createVersionSnapshot = useCallback((label: string, summary = 'Manual save') => {
-  const nv = { id: ver_${Date.now()}, versionNumber: v${(versions.length * 0.5 + 1).toFixed(1)}, label, timestamp: 'Just now', changesSummary: summary, clipsSnapshot: [...clips] } as any;
+  const nv = { id: `ver_${Date.now()}`, versionNumber: `v${(versions.length * 0.5 + 1).toFixed(1)}`, label, timestamp: 'Just now', changesSummary: summary, clipsSnapshot: [...clips] } as any;
   setVersions(p => [nv, ...p]);
 }, [clips, versions.length]);
 const restoreVersion = useCallback((id: string) => {
