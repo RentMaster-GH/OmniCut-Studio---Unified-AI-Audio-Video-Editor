@@ -39,7 +39,7 @@ export const AIStudioGenerator: React.FC = () => {
   };
 
   const handleGenerate = async () => {
-    if (activeEngineMode === 'text-to-video' &&!prompt.trim()) return;
+    if (activeEngineMode === 'text-to-video' && !prompt.trim()) return;
 
     const finalizedConceptPrompt = activeEngineMode === 'text-to-video'
       ? prompt
@@ -82,24 +82,24 @@ export const AIStudioGenerator: React.FC = () => {
         <div className="flex bg-zinc-950 p-1 rounded-xl border border-zinc-800 self-start sm:self-auto">
           <button
             type="button"
-            onClick={() =>!isAIGenerating && setActiveEngineMode('text-to-video')}
-            className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition flex items-center gap-1.5 ${activeEngineMode === 'text-to-video'? 'bg-purple-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}
+            onClick={() => !isAIGenerating && setActiveEngineMode('text-to-video')}
+            className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition flex items-center gap-1.5 ${activeEngineMode === 'text-to-video' ? 'bg-purple-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}
           >
             <Film className="w-3 h-3" />
             <span>Prompt Studio</span>
           </button>
           <button
             type="button"
-            onClick={() =>!isAIGenerating && setActiveEngineMode('video-to-video')}
-            className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition flex items-center gap-1.5 ${activeEngineMode === 'video-to-video'? 'bg-purple-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}
+            onClick={() => !isAIGenerating && setActiveEngineMode('video-to-video')}
+            className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition flex items-center gap-1.5 ${activeEngineMode === 'video-to-video' ? 'bg-purple-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}
           >
             <RefreshCw className="w-3 h-3" />
             <span>AI Restyler</span>
           </button>
           <button
             type="button"
-            onClick={() =>!isAIGenerating && setActiveEngineMode('virtual-tryon')}
-            className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition flex items-center gap-1.5 ${activeEngineMode === 'virtual-tryon'? 'bg-purple-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}
+            onClick={() => !isAIGenerating && setActiveEngineMode('virtual-tryon')}
+            className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition flex items-center gap-1.5 ${activeEngineMode === 'virtual-tryon' ? 'bg-purple-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}
           >
             <Shirt className="w-3 h-3" />
             <span>AI Try-On</span>
@@ -110,45 +110,38 @@ export const AIStudioGenerator: React.FC = () => {
       <div className="flex-1 p-5 overflow-y-auto space-y-6 text-xs text-zinc-300 max-w-4xl mx-auto w-full flex flex-col justify-center">
         {/* Dynamic content rendering options */}
         {activeEngineMode === 'text-to-video' && (
-          <>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-zinc-300 flex items-center justify-between">
-                <span>Video Idea, Script or Topic:</span>
-                <span className="text-[11px] text-zinc-500">Supports scripts, bullet points, or creative concepts</span>
+          <div className="flex flex-col gap-4 bg-zinc-900/40 p-4 border border-zinc-800 rounded-xl">
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-semibold text-zinc-300">
+                Enter your AI Video Prompt:
               </label>
-              <div className="relative">
-                <textarea
-                  rows={4}
-                  placeholder="e.g. Create a 30s high-energy video for tech founders explaining why AI will transform media production in 2026..."
-                  value={prompt}
-                  onChange={e => setPrompt(e.target.value)}
-                  disabled={isAIGenerating}
-                  className="w-full bg-zinc-900 border border-zinc-700/80 rounded-xl p-3.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 shadow-inner resize-none"
-                />
-                <div className="absolute right-3 bottom-3 flex items-center gap-2">
-                  <span className="text-[11px] text-zinc-500 font-mono">{prompt.length} chars</span>
-                </div>
-              </div>
+              <textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                disabled={isAIGenerating}
+                placeholder="Describe the video you want to generate (e.g., 'A dramatic cinematic drone shot of a futuristic cyberpunk city at night...')"
+                className="w-full h-24 bg-zinc-950 border border-zinc-700 rounded-xl p-3 text-xs text-zinc-200 focus:outline-none focus:border-purple-500 resize-none"
+              />
             </div>
 
-            <div className="space-y-1.5">
-              <span className="text-[11px] text-zinc-400 font-medium">Quick Creative Prompts:</span>
-              <div className="flex flex-wrap gap-2">
-                {samplePrompts.map((p, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setPrompt(p)}
-                    className="text-left text-[11px] bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white px-2.5 py-1.5 rounded-lg transition"
-                  >
-                    "{p.slice(0, 48)}..."
-                  </button>
-                ))}
-              </div>
+            <p className="text-[11px] text-zinc-500 leading-normal">
+              💡 Invideo AI Node: The system will parse your description to automatically script, sequence, and generate dynamic timeline tracks.
+            </p>
+
+            {/* Dedicated local generation execution button */}
+            <div className="flex justify-end mt-2">
+              <button
+                type="button"
+                onClick={handleGenerate}
+                disabled={isAIGenerating || !prompt.trim()}
+                className="px-5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition disabled:opacity-45"
+              >
+                {isAIGenerating ? 'Generating Project Blocks...' : 'Execute Invideo Prompt'}
+              </button>
             </div>
-          </>
+          </div>
         )}
-                {activeEngineMode === 'video-to-video' && (
+        {activeEngineMode === 'video-to-video' && (
           <div className="flex flex-col gap-4 bg-zinc-900/40 p-4 border border-zinc-800 rounded-xl">
             <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-zinc-300">
