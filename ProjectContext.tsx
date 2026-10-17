@@ -294,7 +294,7 @@ const generateAIVideo = useCallback(async (prompt: string, tone = 'Energetic', f
     ...placeholderClip,
     title: isCat ? '🐱 AI Generated Cat Play.mp4' : '✨ YouCam Replicated Render.mp4',
     src: fallbackSrc,
-    text: isCat ? 'The active cat successfully leaps across the fence boundary!' : [AI Output] ${prompt}
+    text: isCat ? 'The active cat successfully leaps across the fence boundary!' : `[AI Output] ${prompt}`
   } as any]);
   setCurrentTime(1.0);
   setIsPlaying(true);
