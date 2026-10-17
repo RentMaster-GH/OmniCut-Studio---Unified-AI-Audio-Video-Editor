@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { ProjectProvider, useProject } from "./ProjectContext";
 import { HeaderNavBar } from './components/common/HeaderNavBar';
 import { VideoPlayerCanvas } from "./VideoPlayerCanvas";
-import { MultitrackTimeline } from './components/timeline/MultitrackTimeline';
+import { MultitrackTimeline } from "./MultitrackTimeline";
 import { TranscriptEditor } from './components/transcript/TranscriptEditor';
 import { CaptionsStudio } from './components/captions/CaptionsStudio';
 import { AIStudioGenerator } from './components/invideo/AIStudioGenerator';
