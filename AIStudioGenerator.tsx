@@ -42,13 +42,13 @@ export const AIStudioGenerator: React.FC = () => {
     if (activeEngineMode === 'text-to-video' &&!prompt.trim()) return;
 
     const finalizedConceptPrompt = activeEngineMode === 'text-to-video'
-     ? prompt
+      ? prompt
       : activeEngineMode === 'video-to-video'
-       ? `Restyled video into ${targetAestheticStyle} theme blueprint`
+        ? `Restyled video into ${targetAestheticStyle} theme blueprint`
         : `AI Virtual Try-On outfit swap into ${targetOutfitType}`;
 
     const res = await generateAIVideo(finalizedConceptPrompt, tone, format, activeEngineMode);
-
+    
     if (res?.projectTitle || res?.title) {
       setLastGeneratedTitle(res.projectTitle || res.title);
       setTimeout(() => {
@@ -191,7 +191,6 @@ export const AIStudioGenerator: React.FC = () => {
                 <option value="Bohemian Floral Summer Maxi Dress Piece">Bohemian Floral Summer Maxi Dress Piece</option>
               </select>
             </div>
-
             💡 YouCam VTO Module: The system automatically identifies person parameters on your timeline tracks and warps the textile textures directly to their posture dimensions.
 
           </div>
@@ -256,7 +255,6 @@ export const AIStudioGenerator: React.FC = () => {
                       {activeEngineMode === 'text-to-video' && 'Generate Full Video Project'}
                       {activeEngineMode === 'video-to-video' && 'Bake AI Style Overlays'}
                       {activeEngineMode === 'virtual-tryon' && 'Execute Digital Garment Swap'}
-
                     </>
                   )}
                 </button>
