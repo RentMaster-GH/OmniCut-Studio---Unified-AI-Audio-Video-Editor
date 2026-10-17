@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { ProjectProvider, useProject } from './context/ProjectContext';
+import { ProjectProvider, useProject } from "./ProjectContext";
 import { HeaderNavBar } from './components/common/HeaderNavBar';
 import { VideoPlayerCanvas } from './components/player/VideoPlayerCanvas';
 import { MultitrackTimeline } from './components/timeline/MultitrackTimeline';
