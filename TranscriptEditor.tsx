@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useProject } from '../../context/ProjectContext';
+import { useProject } from "./ProjectContext";
 import {
   Sparkles,
   Scissors,
@@ -13,7 +13,7 @@ import {
   Clock,
   AlertCircle,
 } from 'lucide-react';
-import { TranscriptWord } from '../../types';
+import { TranscriptWord } from "./types";
 
 export const TranscriptEditor: React.FC = () => {
   const {
