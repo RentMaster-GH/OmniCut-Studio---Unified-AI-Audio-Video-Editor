@@ -254,7 +254,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       muted: false,
       color: '#9333EA',
       src: '',
-      text: [Processing] ${prompt}
+      text: `[Processing] ${prompt}`
     } as any;
     setClips([placeholderClip]);
     setSelectedClipId(uniformId);
