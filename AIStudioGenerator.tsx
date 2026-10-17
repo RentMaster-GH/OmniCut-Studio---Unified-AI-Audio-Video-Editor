@@ -147,6 +147,7 @@ export const AIStudioGenerator: React.FC = () => {
               </div>
             </div>
           </>
+        )}
                 {activeEngineMode === 'video-to-video' && (
           <div className="flex flex-col gap-4 bg-zinc-900/40 p-4 border border-zinc-800 rounded-xl">
             <div className="flex flex-col gap-2">
