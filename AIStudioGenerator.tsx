@@ -147,9 +147,7 @@ export const AIStudioGenerator: React.FC = () => {
               </div>
             </div>
           </>
-        )}
-
-        {activeEngineMode === 'video-to-video' && (
+                {activeEngineMode === 'video-to-video' && (
           <div className="flex flex-col gap-4 bg-zinc-900/40 p-4 border border-zinc-800 rounded-xl">
             <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-zinc-300">
@@ -191,77 +189,84 @@ export const AIStudioGenerator: React.FC = () => {
                 <option value="Bohemian Floral Summer Maxi Dress Piece">Bohemian Floral Summer Maxi Dress Piece</option>
               </select>
             </div>
-            💡 YouCam VTO Module: The system automatically identifies person parameters on your timeline tracks and warps the textile textures directly to their posture dimensions.
-
+            <p className="text-[11px] text-zinc-500 leading-normal">
+              💡 YouCam VTO Module: The system automatically identifies person parameters on your timeline tracks and warps the textile textures directly to their posture dimensions.
+            </p>
           </div>
         )}
 
         {/* Global Settings Block */}
+        <div className="flex flex-col gap-4 mt-2">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold text-zinc-300">Pacing & Tone:</label>
+            <select
+              value={tone}
+              onChange={e => setTone(e.target.value)}
+              className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none"
+            >
+              <option value="viral">Viral & High Energy (TikTok/Reels)</option>
+              <option value="cinematic">Cinematic & Dramatic (YouTube 4K)</option>
+              <option value="professional">Professional & Authoritative (B2B)</option>
+              <option value="casual">Casual & Conversational (Podcast)</option>
+            </select>
+          </div>
 
-        Pacing & Tone:
-        <select
-          value={tone}
-          onChange={e => setTone(e.target.value)}
-          className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none"
-        >
-          Viral & High Energy (TikTok/Reels)
-          Cinematic & Dramatic (YouTube 4K)
-          Professional & Authoritative (B2B)
-          Casual & Conversational (Podcast)
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold text-zinc-300">Target Platform Aspect:</label>
+            <select
+              value={format}
+              onChange={e => setFormat(e.target.value)}
+              className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none"
+            >
+              <option value="16:9">16:9 Landscape (YouTube & Premiere)</option>
+              <option value="9:16">9:16 Vertical (TikTok & Reels & Shorts)</option>
+              <option value="1:1">1:1 Square (LinkedIn & X Feed)</option>
+            </select>
+          </div>
 
-          Target Platform Aspect:
-          <select
-            value={format}
-            onChange={e => setFormat(e.target.value)}
-            className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none"
-          >
-            16:9 Landscape (YouTube & Premiere)
-            9:16 Vertical (TikTok & Reels & Shorts)
-            1:1 Square (LinkedIn & X Feed)
-
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold text-zinc-300">AI Voice Profile:</label>
             <select
               value={voice}
               onChange={e => setVoice(e.target.value)}
               className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none"
             >
-              Zephyr (Confident Studio Narrator)
-              Kore (Warm & Articulate Professional)
-              Puck (Energetic Youth Creator)
-              Fenrir (Deep Cinematic Movie Voice)
-              Charon (Authoritative Documentary)
-
-              {/* Action Buttons */}
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('editor')}
-                className="px-4 py-2.5 rounded-xl border border-zinc-700 text-zinc-300 hover:bg-zinc-800 transition"
-              >
-                Cancel / Back to Timeline
-                <button
-                  type="button"
-                  onClick={handleGenerate}
-                  disabled={isAIGenerating || (activeEngineMode === 'text-to-video' &&!prompt.trim())}
-                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white font-bold shadow-xl transition transform active:scale-95 flex items-center gap-2 disabled:opacity-50"
-                >
-                  {isAIGenerating? (
-                    <>
-
-                      Synthesizing Storyboard & Clips...
-                    </>
-                  ) : (
-                    <>
-
-                      {activeEngineMode === 'text-to-video' && 'Generate Full Video Project'}
-                      {activeEngineMode === 'video-to-video' && 'Bake AI Style Overlays'}
-                      {activeEngineMode === 'virtual-tryon' && 'Execute Digital Garment Swap'}
-                    </>
-                  )}
-                </button>
-              </button>
+              <option value="Zephyr">Zephyr (Confident Studio Narrator)</option>
+              <option value="Kore">Kore (Warm & Articulate Professional)</option>
+              <option value="Puck">Puck (Energetic Youth Creator)</option>
+              <option value="Fenrir">Fenrir (Deep Cinematic Movie Voice)</option>
+              <option value="Charon">Charon (Authoritative Documentary)</option>
             </select>
-          </select>
-        </select>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center justify-end gap-3 mt-6">
+          <button
+            type="button"
+            onClick={() => setActiveTab('editor')}
+            className="px-4 py-2.5 rounded-xl border border-zinc-700 text-zinc-300 hover:bg-zinc-800 transition text-xs"
+          >
+            Cancel / Back to Timeline
+          </button>
+          
+          <button
+            type="button"
+            onClick={handleGenerate}
+            disabled={isAIGenerating || (activeEngineMode === 'text-to-video' && !prompt.trim())}
+            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white font-bold text-xs shadow-xl transition transform active:scale-95 flex items-center gap-2 disabled:opacity-50"
+          >
+            {isAIGenerating ? (
+              <span>Synthesizing Storyboard & Clips...</span>
+            ) : (
+              <>
+                {activeEngineMode === 'text-to-video' && 'Generate Full Video Project'}
+                {activeEngineMode === 'video-to-video' && 'Bake AI Style Overlays'}
+                {activeEngineMode === 'virtual-tryon' && 'Execute Digital Garment Swap'}
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
