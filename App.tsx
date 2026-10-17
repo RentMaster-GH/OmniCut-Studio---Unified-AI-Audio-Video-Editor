@@ -5,17 +5,17 @@
 
 import React, { useState } from 'react';
 import { ProjectProvider, useProject } from "./ProjectContext";
-import { HeaderNavBar } from './components/common/HeaderNavBar';
+import { HeaderNavBar } from "./HeaderNavBar";
 import { VideoPlayerCanvas } from "./VideoPlayerCanvas";
 import { MultitrackTimeline } from "./MultitrackTimeline";
 import { TranscriptEditor } from "./TranscriptEditor";
 import { CaptionsStudio } from "./CaptionsStudio";
-import { AIStudioGenerator } from './components/invideo/AIStudioGenerator';
-import { AudioMixerSuite } from './components/audio/AudioMixerSuite';
-import { AnalyticsDashboard } from './components/analytics/AnalyticsDashboard';
-import { CollaborativeWorkspace } from './components/collab/CollaborativeWorkspace';
-import { ExportModal } from './components/export/ExportModal';
-import { SecurityModal } from './components/security/SecurityModal';
+import { AIStudioGenerator } from "./AIStudioGenerator";
+import { AudioMixerSuite } from "./AudioMixerSuite";
+import { AnalyticsDashboard } from "./AnalyticsDashboard";
+import { CollaborativeWorkspace } from "./CollaborativeWorkspace";
+import { ExportModal } from "./ExportModal";
+import { SecurityModal } from "./SecurityModal";
 import {
   FileText,
   Type,
