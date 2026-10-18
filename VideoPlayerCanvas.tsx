@@ -18,7 +18,7 @@ import {
   Settings,
   Film,
 } from 'lucide-react';
-import { drawLiveGenerativeScene } from "./utils/videoLibrary";
+import { drawLiveGenerativeScene } from "./videoLibrary";
 import { ColorGrading } from "./types";
 
 function getCssFilter(colorGrading: ColorGrading): string {
