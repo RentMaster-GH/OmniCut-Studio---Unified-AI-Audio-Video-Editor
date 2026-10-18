@@ -5,7 +5,7 @@
  * across all existing studio components while enforcing global media output routing.
  */
 
-import { AudioManager, audioManager } from './audioManager';
+import { AudioManager, audioManager } from "./audioManager";
 
 export { AudioManager, audioManager };
 export const audioEngine = audioManager;
