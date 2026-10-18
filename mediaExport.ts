@@ -4,7 +4,7 @@
  * and Premiere Pro XML interchange sequences.
  */
 
-import { TimelineClip, TimelineTrack, TranscriptWord, CaptionStyle } from '../types';
+import { TimelineClip, TimelineTrack, TranscriptWord, CaptionStyle } from "./types";
 
 /**
  * Generate a standard 16-bit PCM Stereo WAV file in binary RIFF format
