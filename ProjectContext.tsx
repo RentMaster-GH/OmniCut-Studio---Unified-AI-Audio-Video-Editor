@@ -227,7 +227,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     audioEngine.setMasterVolume(vol);
   }, []);
 
-  // Fixed: resume audio context on user action to bypass browser auto-play blocks
   const play = useCallback(() => {
     audioEngine.resume();
     if (currentTime >= duration) setCurrentTime(0);
@@ -278,7 +277,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setSelectedClipId(p => (p === id ? null : p));
   }, []);
 
-  // Global Pro Editor Keyboard Shortcuts with stable refs
   const selectedClipIdRef = useRef(selectedClipId);
   selectedClipIdRef.current = selectedClipId;
   const togglePlayRef = useRef(togglePlay);
@@ -374,7 +372,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const generateTranscriptFromClips = useCallback(async () => setTranscript(INITIAL_TRANSCRIPT), []);
 
-  // Robust AI Video Generation engine supporting ANY prompt, image-to-video, and style restylers
   const generateAIVideo = useCallback(
     async (
       prompt: string,
@@ -399,7 +396,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         console.warn('API script generation warning, using local AI director fallback:', e);
       }
 
-      // If video-to-video restyler mode was chosen, apply aesthetic color grading
       if (mode === 'video-to-video') {
         if (prompt.includes('Cyberpunk') || prompt.includes('Anime')) {
           setColorGrading(prev => ({ ...prev, lut: 'cyber-neon', contrast: 25, saturation: 35 }));
@@ -414,7 +410,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       const isImageMode = mode === 'image-to-video' && !!image;
 
-      // Extract subject for dynamic scene fallback
       const cleanSubject = prompt
         .replace(/^(create a|generate a|make a|video of|video about|clip of|show me|a)\s+/i, '')
         .slice(0, 48);
@@ -474,21 +469,18 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       let currentTimelineStart = 0;
       let wordIdCounter = 1;
 
-            for (let idx = 0; idx < Math.min(4, rawScenes.length); idx++) {
+      for (let idx = 0; idx < Math.min(4, rawScenes.length); idx++) {
         const sc: any = rawScenes[idx];
         const sceneDuration = Math.max(3.5, Number(sc.duration) || 5.5);
-        
-        // SELF-SUFFICIENT: No fetching, no API, infinite prompts
+
+        // SELF-SUFFICIENT: No fetching, infinite prompts
         const searchPrompt = sc.visualPrompt || prompt;
         const matchedVideo = matchVideoForPrompt(searchPrompt);
 
-        const videoSrc = isImageMode ? image! : matchedVideo.src; // will be '' for generative
-        const videoColor = isImageMode ? '#9333EA' : matchedVideo.color;
-        const visualTag = isImageMode ? 'image-to-video' : matchedVideo.visualTag;
+        const videoSrc = isImageMode ? image! : matchedVideo.src;
         const videoColor = isImageMode ? '#9333EA' : matchedVideo.color;
         const visualTag = isImageMode ? 'image-to-video' : matchedVideo.visualTag;
 
-        // 1. Primary Video Clip on Track V1
         const videoClipId = `clip-ai-v1-${idx}-${Date.now()}`;
         newClips.push({
           id: videoClipId,
@@ -508,7 +500,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           text: sc.overlayText || `[Scene ${idx + 1}] ${prompt.slice(0, 36)}`,
         } as any);
 
-        // 2. Graphic / Overlay Badge on Track V2
         newClips.push({
           id: `clip-ai-v2-${idx}-${Date.now()}`,
           trackId: 'track-v2',
@@ -522,7 +513,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           color: '#EC4899',
         } as any);
 
-        // 3. Smart Captions on Track CC
         newClips.push({
           id: `clip-ai-cc-${idx}-${Date.now()}`,
           trackId: 'track-captions',
@@ -537,7 +527,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           text: sc.overlayText || sc.narration || prompt.slice(0, 36),
         } as any);
 
-        // 4. Voiceover & Spoken Dialogue on Track A1
         newClips.push({
           id: `clip-ai-a1-${idx}-${Date.now()}`,
           trackId: 'track-a1',
@@ -551,7 +540,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           color: '#10B981',
         } as any);
 
-        // 5. Build synchronized word-by-word Descript transcript
         const words = (sc.narration || `AI Scene ${idx + 1} generated for ${prompt}`)
           .split(/\s+/)
           .filter(Boolean);
@@ -559,7 +547,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         words.forEach((w: string, wIdx: number) => {
           const wStart = currentTimelineStart + wIdx * wordDuration;
-          const isFiller = ['um', 'uh', 'like', 'basically', 'you know'].includes(w.toLowerCase().replace(/[^a-z]/g, ''));
+          const isFiller = ['um', 'uh', 'like', 'basically', 'you know'].includes(
+            w.toLowerCase().replace(/[^a-z]/g, '')
+          );
           newTranscript.push({
             id: `w-gen-${wordIdCounter++}`,
             word: w,
@@ -571,9 +561,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         });
 
         currentTimelineStart += sceneDuration;
-} // end for loop
+      }
 
-      // 6. Background Score on Track A2 spanning the whole duration
       newClips.push({
         id: `clip-ai-a2-${Date.now()}`,
         trackId: 'track-a2',
@@ -592,7 +581,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (newClips[0]) setSelectedClipId(newClips[0].id);
       setCurrentTime(0);
 
-      // Auto-resume audio manager singleton and commence playback through master volume
       audioEngine.resume();
       audioEngine.setMasterVolume(masterVolume);
       audioEngine.setTrackVolume('track-v1', 1.0);
@@ -607,15 +595,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const updateAudioChannel = useCallback((id: string, u: Partial<AudioMixerChannel>) => {
     setAudioChannels(p => p.map(c => (c.trackId === id ? { ...c, ...u } : c)));
-    if (u.volume !== undefined) {
-      audioEngine.setTrackVolume(id, u.volume);
-    }
-    if (u.eq) {
-      audioEngine.updateEq(id, u.eq);
-    }
-    if (u.studioSoundActive !== undefined) {
-      audioEngine.setStudioSound(u.studioSoundActive);
-    }
+    if (u.volume !== undefined) audioEngine.setTrackVolume(id, u.volume);
+    if (u.eq) audioEngine.updateEq(id, u.eq);
+    if (u.studioSoundActive !== undefined) audioEngine.setStudioSound(u.studioSoundActive);
   }, []);
 
   const toggleStudioSound = useCallback(() => {
