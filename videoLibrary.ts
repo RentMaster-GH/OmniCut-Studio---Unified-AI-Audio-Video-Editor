@@ -334,3 +334,6 @@ export function drawLiveGenerativeScene(
   ctx.stroke();
   ctx.restore();
 }
+
+// BACKWARD COMPATIBILITY - keeps old imports working
+export const VERIFIED_STOCK_VIDEOS: VideoAsset[] = [];
