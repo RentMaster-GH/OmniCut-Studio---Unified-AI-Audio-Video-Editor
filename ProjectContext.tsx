@@ -476,7 +476,24 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       rawScenes.slice(0, 4).forEach((sc: any, idx: number) => {
         const sceneDuration = Math.max(3.5, Number(sc.duration) || 5.5);
-        const matchedVideo = matchVideoForPrompt(sc.visualPrompt || sc.brollKeyword || prompt, idx);
+        // USE REAL USER PROMPT, not brollKeyword - this fixes bird issue
+const searchPrompt = prompt; // "pig eating" - not scene.brollKeyword
+const matchedVideo = matchVideoForPrompt(searchPrompt, idx);
+
+// Try to fetch REAL video from API if available (Coverr/Pixabay)
+try {
+  const realRes = await fetch('/api/ai/fetch-real-video', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt: searchPrompt })
+  });
+  if (realRes.ok) {
+    const realData = await realRes.json();
+    if (realData.originalVideo) {
+      matchedVideo.src = realData.originalVideo; // Override with REAL pig video
+    }
+  }
+} catch {}
 
         const videoSrc = isImageMode ? image! : matchedVideo.src;
         const videoColor = isImageMode ? '#9333EA' : matchedVideo.color;
