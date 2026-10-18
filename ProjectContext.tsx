@@ -474,11 +474,30 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       let currentTimelineStart = 0;
       let wordIdCounter = 1;
 
-      rawScenes.slice(0, 4).forEach((sc: any, idx: number) => {
-        const sceneDuration = Math.max(3.5, Number(sc.duration) || 5.5);
-        // USE REAL USER PROMPT, not brollKeyword - this fixes bird issue
-const searchPrompt = prompt; // "pig eating" - not scene.brollKeyword
-const matchedVideo = matchVideoForPrompt(searchPrompt, idx);
+      for (let idx = 0; idx < Math.min(4, rawScenes.length); idx++) {
+  const sc: any = rawScenes[idx];
+  const sceneDuration = Math.max(3.5, Number(sc.duration) || 5.5);
+  
+  // FIX: Use REAL user prompt, not brollKeyword
+  const searchPrompt = prompt; // "pig eating" - fixes bird bug
+  let matchedVideo = matchVideoForPrompt(searchPrompt, idx);
+
+  // OPTIONAL: Try real API - now allowed because we're in async function with for loop
+  try {
+    const realRes = await fetch('/api/ai/fetch-real-video', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: searchPrompt })
+    });
+    if (realRes.ok) {
+      const realData = await realRes.json();
+      if (realData.originalVideo) {
+        matchedVideo = { ...matchedVideo, src: realData.originalVideo };
+      }
+    }
+  } catch (err) {
+    console.log('Using local video library', err);
+  }
 
 // Try to fetch REAL video from API if available (Coverr/Pixabay)
 try {
@@ -582,7 +601,7 @@ try {
         });
 
         currentTimelineStart += sceneDuration;
-      });
+} // end for loop
 
       // 6. Background Score on Track A2 spanning the whole duration
       newClips.push({
