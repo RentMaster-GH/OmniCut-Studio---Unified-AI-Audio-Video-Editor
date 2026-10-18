@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useProject } from '../../context/ProjectContext';
+import { useProject } from "./ProjectContext";
 import {
   Type,
   Sparkles,
@@ -10,7 +10,7 @@ import {
   Wand2,
   Check,
 } from 'lucide-react';
-import { CaptionStyle } from '../../types';
+import { CaptionStyle } from "./types";
 
 export const CaptionsStudio: React.FC = () => {
   const { captionStyle, setCaptionStyle, clips, currentTime } = useProject();
