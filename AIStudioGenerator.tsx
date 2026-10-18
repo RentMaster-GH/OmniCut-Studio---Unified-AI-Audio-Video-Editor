@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useProject } from './ProjectContext';
+import { useProject } from '../../context/ProjectContext';
 import {
   Sparkles,
   Wand2,
@@ -12,11 +12,11 @@ import {
   Loader2,
   Image as ImageIcon,
   Upload,
-  X
+  X,
 } from 'lucide-react';
-import { audioEngine } from './audioEngine';
+import { audioManager } from '../../utils/audioManager';
 
-type StudioEngineMode = 'text-to-video' | 'image-to-video' | 'video-to-video' | 'virtual-tryon';
+export type StudioEngineMode = 'text-to-video' | 'image-to-video' | 'video-to-video' | 'virtual-tryon';
 
 export const AIStudioGenerator: React.FC = () => {
   const { generateAIVideo, isAIGenerating, setActiveTab } = useProject();
@@ -36,13 +36,17 @@ export const AIStudioGenerator: React.FC = () => {
 
   const samplePrompts = [
     'Create a 30s viral TikTok on why AI audio and video editors are replacing legacy NLE workflows.',
+    'A flying cow soaring over emerald green pastures and golden clouds, cinematic 4k.',
     'Cinematic product reveal for an ultra-fast cyberpunk smartwatch with neon B-roll and punchy hook.',
+    'A high-performance sports car drifting through wet neon Tokyo streets at midnight.',
     'YouTube Shorts explaining how quantum computers break modern encryption with dramatic visuals.',
-    'Educational breakdown: 3 secrets high-retention creators use to keep viewers watching past 5 seconds.',
   ];
 
   const handleVoicePreview = () => {
-    audioEngine.speakNarration('Welcome to OmniCut Studio. Powered by Gemini AI for next generation storytelling.', voice);
+    audioManager.speakNarration(
+      'Welcome to OmniCut Studio. Powered by unified AI audio and video routing for next-generation storytelling.',
+      voice
+    );
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -65,8 +69,7 @@ export const AIStudioGenerator: React.FC = () => {
 
     let finalImagePayload: string | null = null;
     if (activeEngineMode === 'image-to-video' && imagePreview) {
-      finalImagePayload = imagePreview; // base64, will be sent as image
-      // Optional: try upload to /api/upload for URL
+      finalImagePayload = imagePreview; // base64 payload
       if (uploadedFile) {
         try {
           const form = new FormData();
@@ -82,22 +85,28 @@ export const AIStudioGenerator: React.FC = () => {
       }
     }
 
-    const finalizedConceptPrompt = activeEngineMode === 'text-to-video'
-      ? prompt
-      : activeEngineMode === 'image-to-video'
-        ? prompt || 'Animate this image, make it fly, cinematic motion'
+    const finalizedConceptPrompt =
+      activeEngineMode === 'text-to-video'
+        ? prompt
+        : activeEngineMode === 'image-to-video'
+        ? prompt.trim() || 'Animate this image with cinematic camera pan, zoom, and dynamic motion'
         : activeEngineMode === 'video-to-video'
-          ? `Restyled video into ${targetAestheticStyle} theme blueprint`
-          : `AI Virtual Try-On outfit swap into ${targetOutfitType}`;
+        ? `${prompt ? prompt + ' - ' : ''}Restyled video into ${targetAestheticStyle} theme blueprint`
+        : `${prompt ? prompt + ' - ' : ''}AI Virtual Try-On outfit swap into ${targetOutfitType}`;
 
-    // @ts-ignore - allow 5th param (image)
-    const res = await generateAIVideo(finalizedConceptPrompt, tone, format, activeEngineMode, finalImagePayload);
-    
+    const res = await generateAIVideo(
+      finalizedConceptPrompt,
+      tone,
+      format,
+      activeEngineMode,
+      finalImagePayload
+    );
+
     if (res?.projectTitle || res?.title) {
       setLastGeneratedTitle(res.projectTitle || res.title);
       setTimeout(() => {
         setActiveTab('editor');
-      }, 1000);
+      }, 700);
     }
   };
 
@@ -111,23 +120,27 @@ export const AIStudioGenerator: React.FC = () => {
           </span>
           <div>
             <h2 className="text-sm font-bold text-white tracking-wide flex items-center gap-1.5">
-              YouCam AI Generation Suite
+              OmniCut AI Generation Suite
               <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded font-mono">
-                Gemini 3.8 Flash
+                Unified Audio & Video Engine
               </span>
             </h2>
             <p className="text-xs text-zinc-400">
-              Deploy high-fidelity text-to-video, restyling diffusions, and digital clothing swaps
+              Deploy high-fidelity text-to-video, image animation, restyling diffusions, and digital clothing swaps
             </p>
           </div>
         </div>
 
         {/* Engine switcher tabs */}
-        <div className="flex bg-zinc-950 p-1 rounded-xl border border-zinc-800 self-start sm:self-auto">
+        <div className="flex bg-zinc-950 p-1 rounded-xl border border-zinc-800 self-start sm:self-auto overflow-x-auto">
           <button
             type="button"
             onClick={() => !isAIGenerating && setActiveEngineMode('text-to-video')}
-            className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition flex items-center gap-1.5 ${activeEngineMode === 'text-to-video' ? 'bg-purple-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}
+            className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition flex items-center gap-1.5 shrink-0 ${
+              activeEngineMode === 'text-to-video'
+                ? 'bg-purple-600 text-white shadow'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
           >
             <Film className="w-3 h-3" />
             <span>Prompt Studio</span>
@@ -135,7 +148,11 @@ export const AIStudioGenerator: React.FC = () => {
           <button
             type="button"
             onClick={() => !isAIGenerating && setActiveEngineMode('image-to-video')}
-            className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition flex items-center gap-1.5 ${activeEngineMode === 'image-to-video' ? 'bg-purple-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}
+            className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition flex items-center gap-1.5 shrink-0 ${
+              activeEngineMode === 'image-to-video'
+                ? 'bg-purple-600 text-white shadow'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
           >
             <ImageIcon className="w-3 h-3" />
             <span>Image to Video</span>
@@ -143,7 +160,11 @@ export const AIStudioGenerator: React.FC = () => {
           <button
             type="button"
             onClick={() => !isAIGenerating && setActiveEngineMode('video-to-video')}
-            className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition flex items-center gap-1.5 ${activeEngineMode === 'video-to-video' ? 'bg-purple-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}
+            className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition flex items-center gap-1.5 shrink-0 ${
+              activeEngineMode === 'video-to-video'
+                ? 'bg-purple-600 text-white shadow'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
           >
             <RefreshCw className="w-3 h-3" />
             <span>AI Restyler</span>
@@ -151,7 +172,11 @@ export const AIStudioGenerator: React.FC = () => {
           <button
             type="button"
             onClick={() => !isAIGenerating && setActiveEngineMode('virtual-tryon')}
-            className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition flex items-center gap-1.5 ${activeEngineMode === 'virtual-tryon' ? 'bg-purple-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}
+            className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition flex items-center gap-1.5 shrink-0 ${
+              activeEngineMode === 'virtual-tryon'
+                ? 'bg-purple-600 text-white shadow'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
           >
             <Shirt className="w-3 h-3" />
             <span>AI Try-On</span>
@@ -160,18 +185,33 @@ export const AIStudioGenerator: React.FC = () => {
       </div>
 
       <div className="flex-1 p-5 overflow-y-auto space-y-6 text-xs text-zinc-300 max-w-4xl mx-auto w-full flex flex-col justify-center">
+        {lastGeneratedTitle && (
+          <div className="p-3 rounded-xl bg-emerald-950/60 border border-emerald-800 text-emerald-300 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>Project generated with synchronized audio: <strong>"{lastGeneratedTitle}"</strong></span>
+            </div>
+            <button
+              onClick={() => setActiveTab('editor')}
+              className="text-xs underline text-emerald-300 hover:text-white"
+            >
+              Open in Timeline Editor &rarr;
+            </button>
+          </div>
+        )}
+
         {/* Dynamic content rendering options */}
         {activeEngineMode === 'text-to-video' && (
           <div className="flex flex-col gap-4 bg-zinc-900/40 p-4 border border-zinc-800 rounded-xl">
             <div className="space-y-2">
               <label className="text-xs font-semibold text-zinc-300 flex items-center justify-between">
                 <span>Video Idea, Script or Topic:</span>
-                <span className="text-[11px] text-zinc-500">Supports scripts, bullet points, or creative concepts</span>
+                <span className="text-[11px] text-zinc-500">Generates custom scenes for ANY prompt</span>
               </label>
               <div className="relative">
                 <textarea
                   rows={4}
-                  placeholder="e.g. Create a 30s high-energy video for tech founders explaining why AI will transform media production in 2026..."
+                  placeholder="e.g. A flying cow soaring over emerald green pastures and golden clouds, cinematic 4k..."
                   value={prompt}
                   onChange={e => setPrompt(e.target.value)}
                   disabled={isAIGenerating}
@@ -200,7 +240,7 @@ export const AIStudioGenerator: React.FC = () => {
             </div>
 
             <p className="text-[11px] text-zinc-500 leading-normal">
-              💡 Invideo AI Node: The system will parse your description to automatically script, sequence, and generate dynamic timeline tracks.
+              💡 OmniCut Generator: Automatically scripts scenes, matches video & audio tracks, and routes audio through the unified master volume controller.
             </p>
 
             <div className="flex justify-end mt-2">
@@ -210,7 +250,7 @@ export const AIStudioGenerator: React.FC = () => {
                 disabled={isAIGenerating || !prompt.trim()}
                 className="px-5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition disabled:opacity-45"
               >
-                {isAIGenerating ? 'Generating Project Blocks...' : 'Execute Invideo Prompt'}
+                {isAIGenerating ? 'Generating Project Blocks...' : 'Execute Prompt Studio'}
               </button>
             </div>
           </div>
@@ -220,19 +260,29 @@ export const AIStudioGenerator: React.FC = () => {
           <div className="flex flex-col gap-4 bg-zinc-900/40 p-4 border border-zinc-800 rounded-xl">
             <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-zinc-300">
-                Upload Image to Animate (e.g., cow):
+                Upload Image to Animate (e.g. cow, car, person, scenery):
               </label>
               {!imagePreview ? (
                 <label className="w-full h-32 border border-dashed border-zinc-700 rounded-xl bg-zinc-950 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-purple-500 transition">
                   <Upload className="w-5 h-5 text-zinc-500" />
-                  <span className="text-[11px] text-zinc-400">Click to upload image (PNG/JPG) - e.g., cow</span>
-                  <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} disabled={isAIGenerating} />
+                  <span className="text-[11px] text-zinc-400">Click to upload image (PNG / JPG / WebP)</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageChange}
+                    disabled={isAIGenerating}
+                  />
                 </label>
               ) : (
                 <div className="relative w-full rounded-xl overflow-hidden border border-zinc-700 bg-zinc-950">
                   <img src={imagePreview} alt="upload preview" className="w-full h-48 object-contain bg-black" />
-                  <button type="button" onClick={clearImage} className="absolute top-2 right-2 p-1 rounded-full bg-zinc-900 border border-zinc-700 hover:bg-zinc-800">
-                    <X className="w-3 h-3 text-white" />
+                  <button
+                    type="button"
+                    onClick={clearImage}
+                    className="absolute top-2 right-2 p-1 rounded-full bg-zinc-900 border border-zinc-700 hover:bg-zinc-800 text-white"
+                  >
+                    <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
               )}
@@ -240,29 +290,29 @@ export const AIStudioGenerator: React.FC = () => {
 
             <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-zinc-300">
-                Enter your AI Video Prompt:
+                Enter Motion & Animation Prompt:
               </label>
               <textarea
                 value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
+                onChange={e => setPrompt(e.target.value)}
                 disabled={isAIGenerating}
-                placeholder="Describe motion: e.g., 'Make this cow fly over a green field, cinematic, 4k'"
-                className="w-full h-24 bg-zinc-950 border border-zinc-700 rounded-xl p-3 text-xs text-zinc-200 focus:outline-none focus:border-purple-500 resize-none"
+                placeholder="Describe motion: e.g. 'Make this cow fly gracefully over an emerald green field into the sunset, cinematic 4k'"
+                className="w-full h-20 bg-zinc-950 border border-zinc-700 rounded-xl p-3 text-xs text-zinc-200 focus:outline-none focus:border-purple-500 resize-none"
               />
             </div>
 
             <p className="text-[11px] text-zinc-500 leading-normal">
-              💡 Invideo AI Node: Image + prompt will be sent to image-to-video model. The system will animate your uploaded image using your prompt.
+              💡 Image-to-Video Engine: Animates your uploaded photo using camera push-in, Ken Burns motion, atmospheric lighting, and full soundtrack scoring.
             </p>
 
             <div className="flex justify-end mt-2">
               <button
                 type="button"
                 onClick={handleGenerate}
-                disabled={isAIGenerating || !imagePreview || !prompt.trim()}
+                disabled={isAIGenerating || !imagePreview}
                 className="px-5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition disabled:opacity-45"
               >
-                {isAIGenerating ? 'Generating Project Blocks...' : 'Execute Invideo Prompt with Image'}
+                {isAIGenerating ? 'Animating Image...' : 'Execute Image to Video'}
               </button>
             </div>
           </div>
@@ -280,15 +330,38 @@ export const AIStudioGenerator: React.FC = () => {
                 disabled={isAIGenerating}
                 className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-3 text-xs text-zinc-200 focus:outline-none cursor-pointer focus:border-purple-500"
               >
-                <option value="Cyberpunk Anime">Cyberpunk Anime (Vibrant neon shading curves)</option>
-                <option value="Van Gogh Oil Painting">Van Gogh Impressionist (Thick oil canvas textures)</option>
-                <option value="Vintage 1970s Hollywood Film">Vintage 1970s Hollywood Film (Warped grain anomalies)</option>
-                <option value="3D Pixar Animation Blueprint">3D Unreal Studio Rendering (Claymation modeling matrices)</option>
+                <option value="Cyberpunk Anime">Cyberpunk Anime (Vibrant neon shading & color curves)</option>
+                <option value="Van Gogh Oil Painting">Van Gogh Impressionist (Thick oil canvas textures & warm tones)</option>
+                <option value="Vintage 1970s Hollywood Film">Vintage 1970s Hollywood Film (Warped grain & sepia contrast)</option>
+                <option value="3D Pixar Animation Blueprint">3D Unreal Studio Rendering (Clean HDR modeling matrices)</option>
               </select>
             </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-zinc-300">Optional Focus Concept / Note:</label>
+              <input
+                type="text"
+                value={prompt}
+                onChange={e => setPrompt(e.target.value)}
+                placeholder="e.g. Enhance neon city glows and heighten night contrast"
+                className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-2.5 text-xs text-zinc-200 focus:outline-none"
+              />
+            </div>
+
             <p className="text-[11px] text-zinc-500 leading-normal">
-              💡 YouCam Translation Node: This configuration translates active track layers frame-by-frame while utilizing temporal-consistency locks to stop image fluttering patterns.
+              💡 AI Restyler: Applies stylistic color LUTs and visual grading directly across active timeline tracks.
             </p>
+
+            <div className="flex justify-end mt-2">
+              <button
+                type="button"
+                onClick={handleGenerate}
+                disabled={isAIGenerating}
+                className="px-5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition disabled:opacity-45"
+              >
+                {isAIGenerating ? 'Applying Style Matrix...' : 'Bake AI Style Overlays'}
+              </button>
+            </div>
           </div>
         )}
 
@@ -296,7 +369,7 @@ export const AIStudioGenerator: React.FC = () => {
           <div className="flex flex-col gap-4 bg-zinc-900/40 p-4 border border-zinc-800 rounded-xl">
             <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-zinc-300">
-                Choose targeted digital garment item replacement:
+                Choose targeted digital garment replacement:
               </label>
               <select
                 value={targetOutfitType}
@@ -305,70 +378,96 @@ export const AIStudioGenerator: React.FC = () => {
                 className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-3 text-xs text-zinc-200 focus:outline-none cursor-pointer focus:border-purple-500"
               >
                 <option value="Futuristic Cyberpunk Leather Jacket">Futuristic Cyberpunk Leather Jacket</option>
-                <option value="Formal Silk Red Carpet Tuxedo Plait">Formal Silk Red Carpet Tuxedo Plait</option>
+                <option value="Formal Silk Red Carpet Tuxedo">Formal Silk Red Carpet Tuxedo Plait</option>
                 <option value="Oversized Streetwear Techwear Hoodie">Oversized Streetwear Techwear Hoodie</option>
-                <option value="Bohemian Floral Summer Maxi Dress Piece">Bohemian Floral Summer Maxi Dress Piece</option>
+                <option value="Bohemian Floral Summer Maxi Dress">Bohemian Floral Summer Maxi Dress Piece</option>
               </select>
             </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-zinc-300">Prompt Notes:</label>
+              <input
+                type="text"
+                value={prompt}
+                onChange={e => setPrompt(e.target.value)}
+                placeholder="e.g. Ensure glossy leather finish with neon cyan stitching"
+                className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-2.5 text-xs text-zinc-200 focus:outline-none"
+              />
+            </div>
+
             <p className="text-[11px] text-zinc-500 leading-normal">
-              💡 YouCam VTO Module: The system automatically identifies person parameters on your timeline tracks and warps the textile textures directly to their posture dimensions.
+              💡 Virtual Try-On Module: Integrates digital clothing overlays and smart scene badges on the timeline.
             </p>
+
+            <div className="flex justify-end mt-2">
+              <button
+                type="button"
+                onClick={handleGenerate}
+                disabled={isAIGenerating}
+                className="px-5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition disabled:opacity-45"
+              >
+                {isAIGenerating ? 'Rendering Garment Swap...' : 'Execute Digital Garment Swap'}
+              </button>
+            </div>
           </div>
         )}
 
         {/* Global Settings Block */}
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-semibold text-zinc-300">Pacing & Tone:</label>
-          <select
-            value={tone}
-            onChange={e => setTone(e.target.value)}
-            className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none"
-          >
-            <option value="viral">Viral & High Energy (TikTok/Reels)</option>
-            <option value="cinematic">Cinematic & Dramatic (YouTube 4K)</option>
-            <option value="professional">Professional & Authoritative (B2B)</option>
-            <option value="casual">Casual & Conversational (Podcast)</option>
-          </select>
-        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-zinc-900/30 p-3 rounded-xl border border-zinc-800/80">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11px] font-semibold text-zinc-300">Pacing & Tone:</label>
+            <select
+              value={tone}
+              onChange={e => setTone(e.target.value)}
+              className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none"
+            >
+              <option value="engaging">Viral & High Energy (TikTok/Reels)</option>
+              <option value="cinematic">Cinematic & Dramatic (YouTube 4K)</option>
+              <option value="professional">Professional & Authoritative (B2B)</option>
+              <option value="casual">Casual & Conversational (Podcast)</option>
+            </select>
+          </div>
 
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-semibold text-zinc-300">Target Platform Aspect:</label>
-          <select
-            value={format}
-            onChange={e => setFormat(e.target.value)}
-            className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none"
-          >
-            <option value="16:9">16:9 Landscape (YouTube & Premiere)</option>
-            <option value="9:16">9:16 Vertical (TikTok & Reels & Shorts)</option>
-            <option value="1:1">1:1 Square (LinkedIn & X Feed)</option>
-          </select>
-        </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11px] font-semibold text-zinc-300">Target Aspect Ratio:</label>
+            <select
+              value={format}
+              onChange={e => setFormat(e.target.value)}
+              className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none"
+            >
+              <option value="16:9">16:9 Landscape (YouTube & Premiere)</option>
+              <option value="9:16">9:16 Vertical (TikTok & Reels & Shorts)</option>
+              <option value="1:1">1:1 Square (LinkedIn & X Feed)</option>
+            </select>
+          </div>
 
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-semibold text-zinc-300">AI Voice Profile:</label>
-          <select
-            value={voice}
-            onChange={e => setVoice(e.target.value)}
-            className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none"
-          >
-            <option value="Zephyr">Zephyr (Confident Studio Narrator)</option>
-            <option value="Kore">Kore (Warm & Articulate Professional)</option>
-            <option value="Puck">Puck (Energetic Youth Creator)</option>
-            <option value="Fenrir">Fenrir (Deep Cinematic Movie Voice)</option>
-            <option value="Charon">Charon (Authoritative Documentary)</option>
-          </select>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-semibold text-zinc-300">AI Voice Profile:</label>
+              <button
+                type="button"
+                onClick={handleVoicePreview}
+                className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-0.5"
+              >
+                <Volume2 className="w-3 h-3" /> Preview
+              </button>
+            </div>
+            <select
+              value={voice}
+              onChange={e => setVoice(e.target.value)}
+              className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none"
+            >
+              <option value="Zephyr">Zephyr (Confident Studio Narrator)</option>
+              <option value="Kore">Kore (Warm & Articulate Professional)</option>
+              <option value="Puck">Puck (Energetic Youth Creator)</option>
+              <option value="Fenrir">Fenrir (Deep Cinematic Movie Voice)</option>
+              <option value="Charon">Charon (Authoritative Documentary)</option>
+            </select>
+          </div>
         </div>
-
-        <button
-          type="button"
-          onClick={handleVoicePreview}
-          className="px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-200 text-xs"
-        >
-          Preview Voice
-        </button>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-3 mt-6">
+        <div className="flex items-center justify-end gap-3 mt-4">
           <button
             type="button"
             onClick={() => setActiveTab('editor')}
@@ -380,7 +479,11 @@ export const AIStudioGenerator: React.FC = () => {
           <button
             type="button"
             onClick={handleGenerate}
-            disabled={isAIGenerating || (activeEngineMode === 'text-to-video' && !prompt.trim()) || (activeEngineMode === 'image-to-video' && (!prompt.trim() || !imagePreview))}
+            disabled={
+              isAIGenerating ||
+              (activeEngineMode === 'text-to-video' && !prompt.trim()) ||
+              (activeEngineMode === 'image-to-video' && !imagePreview)
+            }
             className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white font-bold text-xs shadow-xl transition transform active:scale-95 flex items-center gap-2 disabled:opacity-50"
           >
             {isAIGenerating ? (
@@ -394,6 +497,7 @@ export const AIStudioGenerator: React.FC = () => {
                 {activeEngineMode === 'image-to-video' && 'Generate Video From Image'}
                 {activeEngineMode === 'video-to-video' && 'Bake AI Style Overlays'}
                 {activeEngineMode === 'virtual-tryon' && 'Execute Digital Garment Swap'}
+                <ArrowRight className="w-4 h-4" />
               </>
             )}
           </button>

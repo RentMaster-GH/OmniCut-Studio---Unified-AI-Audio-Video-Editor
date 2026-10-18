@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { useProject } from "./ProjectContext";
+import { useProject } from '../../context/ProjectContext';
 import {
   Play,
   Pause,
@@ -18,8 +18,9 @@ import {
   Settings,
   Film,
 } from 'lucide-react';
-import { drawLiveGenerativeScene } from "./videoLibrary";
-import { ColorGrading } from "./types";
+import { drawLiveGenerativeScene } from '../../utils/videoLibrary';
+import { audioManager } from '../../utils/audioManager';
+import { ColorGrading } from '../../types';
 
 function getCssFilter(colorGrading: ColorGrading): string {
   const brightness = 1 + (colorGrading.brightness || 0) / 100;
@@ -79,16 +80,18 @@ export const VideoPlayerCanvas: React.FC = () => {
     c => c.trackId === 'track-v1' && currentTime >= c.start && currentTime <= c.start + c.duration
   );
 
-  // Sync active video playback and ensure sound is audible
+  // Sync active video playback and ensure sound is audible through unified audio manager
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    // Apply audio volume and mute status to video element
-    const effectiveMuted = masterVolume === 0 || !!activeVideo?.muted;
-    const effectiveVolume = effectiveMuted ? 0 : Math.max(0, Math.min(1, masterVolume * (activeVideo?.volume ?? 1)));
-    video.muted = effectiveMuted;
-    video.volume = effectiveVolume;
+    // Route media element through unified audioManager singleton
+    audioManager.routeAIGeneratedVideo(
+      video,
+      activeVideo?.trackId || 'track-v1',
+      activeVideo?.volume ?? 1,
+      !!activeVideo?.muted
+    );
 
     if (activeVideo?.src) {
       if (activeSrcRef.current !== activeVideo.src) {
@@ -182,9 +185,10 @@ export const VideoPlayerCanvas: React.FC = () => {
         width,
         height,
         currentTime,
-        activeVideo?.title || 'OmniCut Studio AI Scene',
+        activeVideo?.prompt || activeVideo?.title || 'OmniCut Studio AI Scene',
         activeVideo?.visualTag || 'cyberpunk',
-        isPlaying
+        isPlaying,
+        activeVideo?.imageSrc
       );
     }
 

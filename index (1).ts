@@ -47,7 +47,9 @@ export interface TimelineClip {
   effects?: ColorGrading;
   captionStyle?: CaptionStyle;
   isFillerWordSegment?: boolean;
-  visualTag?: string;  // e.g. "coding", "space", "b-roll"
+  visualTag?: string;  // e.g. "coding", "space", "b-roll", "image-to-video"
+  imageSrc?: string;   // for image-to-video animation
+  prompt?: string;     // user prompt or scene visual prompt
 }
 
 export interface TimelineTrack {

@@ -4,20 +4,20 @@
  */
 
 import React, { useState } from 'react';
-import { ProjectProvider, useProject } from "./ProjectContext";
-import { HeaderNavBar } from "./HeaderNavBar";
-import { VideoPlayerCanvas } from "./VideoPlayerCanvas";
-import { MultitrackTimeline } from "./MultitrackTimeline";
-import { TranscriptEditor } from "./TranscriptEditor";
-import { CaptionsStudio } from "./CaptionsStudio";
-import { AIStudioGenerator } from "./AIStudioGenerator";
-import { AudioMixerSuite } from "./AudioMixerSuite";
-import { AnalyticsDashboard } from "./AnalyticsDashboard";
-import { CollaborativeWorkspace } from "./CollaborativeWorkspace";
-import { ExportModal } from "./ExportModal";
-import { SecurityModal } from "./SecurityModal";
-import { MediaUploadModal } from "./MediaUploadModal";
-import { ShortcutsModal } from "./ShortcutsModal";
+import { ProjectProvider, useProject } from './context/ProjectContext';
+import { HeaderNavBar } from './components/common/HeaderNavBar';
+import { VideoPlayerCanvas } from './components/player/VideoPlayerCanvas';
+import { MultitrackTimeline } from './components/timeline/MultitrackTimeline';
+import { TranscriptEditor } from './components/transcript/TranscriptEditor';
+import { CaptionsStudio } from './components/captions/CaptionsStudio';
+import { AIStudioGenerator } from './components/invideo/AIStudioGenerator';
+import { AudioMixerSuite } from './components/audio/AudioMixerSuite';
+import { AnalyticsDashboard } from './components/analytics/AnalyticsDashboard';
+import { CollaborativeWorkspace } from './components/collab/CollaborativeWorkspace';
+import { ExportModal } from './components/export/ExportModal';
+import { SecurityModal } from './components/security/SecurityModal';
+import { MediaUploadModal } from './components/upload/MediaUploadModal';
+import { ShortcutsModal } from './components/common/ShortcutsModal';
 import {
   FileText,
   Type,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useProject } from "./ProjectContext";
+import { useProject } from '../../context/ProjectContext';
 import {
   Volume2,
   VolumeX,
@@ -12,7 +12,7 @@ import {
   Check,
   Disc,
 } from 'lucide-react';
-import { audioEngine } from "./audioEngine";
+import { audioEngine } from '../../utils/audioEngine';
 
 export const AudioMixerSuite: React.FC = () => {
   const {
@@ -26,7 +26,23 @@ export const AudioMixerSuite: React.FC = () => {
   } = useProject();
 
   const [livePeak, setLivePeak] = useState<number>(0.65);
+  const [outputDevices, setOutputDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('default');
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Load available browser audio output devices
+  useEffect(() => {
+    audioEngine.getAvailableOutputDevices().then(devices => {
+      if (devices && devices.length > 0) {
+        setOutputDevices(devices);
+      }
+    });
+  }, []);
+
+  const handleDeviceChange = async (deviceId: string) => {
+    setSelectedDeviceId(deviceId);
+    await audioEngine.setOutputDevice(deviceId);
+  };
 
   // Poll live audio peaks when playing
   useEffect(() => {
@@ -117,33 +133,53 @@ export const AudioMixerSuite: React.FC = () => {
   return (
     <div className="flex flex-col h-full bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl">
       {/* Header */}
-      <div className="p-3 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between">
+      <div className="p-3 bg-zinc-900 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="p-1 rounded bg-emerald-500/20 text-emerald-400">
             <Sliders className="w-4 h-4" />
           </span>
           <div>
             <h3 className="text-xs font-semibold text-white tracking-wide">
-              Premiere Multitrack Audio Mixer & Studio Sound
+              OmniCut Unified Audio Manager & Mixer
             </h3>
             <p className="text-[10px] text-zinc-400">
-              Parametric EQ, LUFS broadcast normalization, and de-reverb
+              Web Audio graph routing, browser device output, and parametric EQ
             </p>
           </div>
         </div>
 
-        {/* Studio Sound AI Master Toggle */}
-        <button
-          onClick={toggleStudioSound}
-          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-md ${
-            isStudioSoundActive
-              ? 'bg-emerald-500 text-zinc-950 hover:bg-emerald-400'
-              : 'bg-zinc-800 border border-zinc-700 text-zinc-400 hover:text-white'
-          }`}
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          Studio Sound AI: {isStudioSoundActive ? 'Active' : 'Bypass'}
-        </button>
+        <div className="flex items-center gap-2.5">
+          {/* Browser Audio Output Device Selector */}
+          <div className="flex items-center gap-1.5 bg-zinc-950 px-2.5 py-1 rounded-lg border border-zinc-800 text-[11px]">
+            <Disc className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+            <span className="text-zinc-400 text-[10px] hidden sm:inline">Output:</span>
+            <select
+              value={selectedDeviceId}
+              onChange={e => handleDeviceChange(e.target.value)}
+              className="bg-transparent text-white text-[11px] font-medium focus:outline-none cursor-pointer max-w-[140px] truncate"
+            >
+              <option value="default" className="bg-zinc-900 text-white">Browser Default Audio Device</option>
+              {outputDevices.map(d => (
+                <option key={d.deviceId} value={d.deviceId} className="bg-zinc-900 text-white">
+                  {d.label || `Audio Device (${d.deviceId.slice(0, 8)})`}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Studio Sound AI Master Toggle */}
+          <button
+            onClick={toggleStudioSound}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-md ${
+              isStudioSoundActive
+                ? 'bg-emerald-500 text-zinc-950 hover:bg-emerald-400'
+                : 'bg-zinc-800 border border-zinc-700 text-zinc-400 hover:text-white'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            Studio Sound AI: {isStudioSoundActive ? 'Active' : 'Bypass'}
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 p-4 overflow-y-auto space-y-6 text-xs text-zinc-300">
@@ -199,7 +235,34 @@ export const AudioMixerSuite: React.FC = () => {
         </div>
 
         {/* Mixer Channel Strips */}
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {/* Channel V1: Video Audio (AI Clips & Stock) */}
+          <div className="bg-zinc-900/80 p-3 rounded-xl border border-zinc-800 flex flex-col justify-between items-center text-center">
+            <span className="text-[11px] font-bold text-blue-400">V1 • Video Audio</span>
+            <span className="text-[9px] text-zinc-400">AI Video Clips</span>
+
+            {/* Peak VU meter */}
+            <div className="w-4 h-28 bg-zinc-950 rounded-full my-3 p-0.5 flex flex-col justify-end overflow-hidden border border-zinc-800">
+              <div
+                style={{ height: `${livePeak * 95}%` }}
+                className="w-full bg-gradient-to-t from-blue-500 via-indigo-400 to-purple-400 rounded-full transition-all duration-75"
+              />
+            </div>
+
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={audioChannels.find(c => c.trackId === 'track-v1')?.volume ?? 1}
+              onChange={e => updateAudioChannel('track-v1', { volume: parseFloat(e.target.value) })}
+              className="w-full accent-blue-500 h-1 my-1"
+            />
+            <span className="font-mono text-[10px] text-zinc-400">
+              {((audioChannels.find(c => c.trackId === 'track-v1')?.volume ?? 1) * 100).toFixed(0)}%
+            </span>
+          </div>
+
           {/* Channel A1: Dialogue */}
           <div className="bg-zinc-900/80 p-3 rounded-xl border border-zinc-800 flex flex-col justify-between items-center text-center">
             <span className="text-[11px] font-bold text-emerald-400">A1 • Dialogue</span>

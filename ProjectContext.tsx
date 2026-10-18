@@ -11,7 +11,7 @@ import {
   CaptionStyle,
   ColorGrading,
   AudioMixerChannel,
-} from "./types";
+} from '../types';
 import {
   INITIAL_CLIPS,
   INITIAL_TRACKS,
@@ -22,9 +22,9 @@ import {
   INITIAL_ANALYTICS,
   DEFAULT_CAPTION_STYLE,
   DEFAULT_COLOR_GRADING,
-} from "./initialProject";
-import { audioEngine } from "./audioEngine";
-import { matchVideoForPrompt } from "./videoLibrary";
+} from '../utils/initialProject';
+import { audioEngine } from '../utils/audioEngine';
+import { matchVideoForPrompt } from '../utils/videoLibrary';
 
 interface ProjectContextType {
   currentTime: number;
@@ -67,7 +67,13 @@ interface ProjectContextType {
   setShowSafeMargins: (show: boolean) => void;
   captionStyle: CaptionStyle;
   setCaptionStyle: React.Dispatch<React.SetStateAction<CaptionStyle>>;
-  generateAIVideo: (prompt: string, tone?: string, format?: string, mode?: string, image?: string | null) => Promise<any>;
+  generateAIVideo: (
+    prompt: string,
+    tone?: string,
+    format?: string,
+    mode?: string,
+    image?: string | null
+  ) => Promise<any>;
   isAIGenerating: boolean;
   colorGrading: ColorGrading;
   setColorGrading: React.Dispatch<React.SetStateAction<ColorGrading>>;
@@ -129,8 +135,21 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [colorGrading, setColorGrading] = useState<ColorGrading>(DEFAULT_COLOR_GRADING);
   const [isStudioSoundActive, setIsStudioSoundActive] = useState(true);
   const [masterVolume, setMasterVolumeState] = useState(0.85);
-  const [audioChannels, setAudioChannels] = useState<AudioMixerChannel[]>(() =>
-    INITIAL_TRACKS.filter(t => t.type === 'audio').map(t => ({
+  const [audioChannels, setAudioChannels] = useState<AudioMixerChannel[]>(() => [
+    {
+      trackId: 'track-v1',
+      name: 'V1 • Video Audio (AI Clips)',
+      volume: 1.0,
+      pan: 0,
+      eq: { low: 0, lowMid: 0, highMid: 0, high: 0 },
+      compressorEnabled: true,
+      compressorThreshold: -16,
+      studioSoundActive: true,
+      noiseReductionDb: 10,
+      deReverbPct: 40,
+      currentPeakLevel: 0.7,
+    },
+    ...INITIAL_TRACKS.filter(t => t.type === 'audio').map(t => ({
       trackId: t.id,
       name: t.name,
       volume: t.volume,
@@ -143,7 +162,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       deReverbPct: t.id === 'track-a1' ? 85 : 0,
       currentPeakLevel: 0.65,
     }))
-  );
+  ]);
   const [isAIGenerating, setIsAIGenerating] = useState(false);
   const [collaborators] = useState<Collaborator[]>(INITIAL_COLLABORATORS);
   const [comments, setComments] = useState<ProjectComment[]>(INITIAL_COMMENTS);
@@ -208,6 +227,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     audioEngine.setMasterVolume(vol);
   }, []);
 
+  // Fixed: resume audio context on user action to bypass browser auto-play blocks
   const play = useCallback(() => {
     audioEngine.resume();
     if (currentTime >= duration) setCurrentTime(0);
@@ -258,6 +278,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setSelectedClipId(p => (p === id ? null : p));
   }, []);
 
+  // Global Pro Editor Keyboard Shortcuts with stable refs
   const selectedClipIdRef = useRef(selectedClipId);
   selectedClipIdRef.current = selectedClipId;
   const togglePlayRef = useRef(togglePlay);
@@ -353,255 +374,242 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const generateTranscriptFromClips = useCallback(async () => setTranscript(INITIAL_TRANSCRIPT), []);
 
-  // Robust AI Video Generation engine with live video matching + image-to-video support
-  const generateAIVideo = useCallback(async (prompt: string, tone = 'engaging', format = '16:9', mode = 'text-to-video', image?: string | null) => {
-    setIsAIGenerating(true);
+  // Robust AI Video Generation engine supporting ANY prompt, image-to-video, and style restylers
+  const generateAIVideo = useCallback(
+    async (
+      prompt: string,
+      tone = 'engaging',
+      format = '16:9',
+      mode = 'text-to-video',
+      image?: string | null
+    ) => {
+      setIsAIGenerating(true);
 
-    let scriptData: any = null;
-    try {
-      const resp = await fetch('/api/ai/generate-script', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, tone, format, mode, image, duration: '20s' }),
-      });
-      if (resp.ok) {
-        scriptData = await resp.json();
-      }
-    } catch (e) {
-      console.warn('API script generation warning, using local AI director fallback:', e);
-    }
-
-    const isImageMode = mode === 'image-to-video' && !!image;
-
-    const isCat = prompt.toLowerCase().includes('cat') || prompt.toLowerCase().includes('kitten');
-    const isOcean = prompt.toLowerCase().includes('ocean') || prompt.toLowerCase().includes('sea') || prompt.toLowerCase().includes('water');
-    const isSunset = prompt.toLowerCase().includes('sunset') || prompt.toLowerCase().includes('drone') || prompt.toLowerCase().includes('sky');
-
-    const defaultScenes = isImageMode
-      ? [
-          {
-            title: 'Scene 01: Image to Video Animation',
-            duration: 6,
-            narration: prompt,
-            visualPrompt: prompt,
-            overlayText: `✨ ${prompt.slice(0, 40)}`,
-          },
-        ]
-      : isCat
-      ? [
-          {
-            title: 'Scene 01: The Feline Stalker',
-            duration: 5,
-            narration: 'Meet Luna the agile ginger cat, scanning the yard for her next move.',
-            visualPrompt: 'cat jumping playing feline agility pet',
-            overlayText: '🐱 INCOMING JUMP: 3... 2... 1...',
-          },
-          {
-            title: 'Scene 02: Maximum Velocity Leap',
-            duration: 6,
-            narration: 'She coils her back legs and launches through the air with effortless grace.',
-            visualPrompt: 'cat jumping backwards acrobatic leap',
-            overlayText: '🚀 ACROBATIC LAUNCH ACTIVATED',
-          },
-          {
-            title: 'Scene 03: Flawless Hero Landing',
-            duration: 5,
-            narration: 'Paws down, tail up, landing complete with total feline composure.',
-            visualPrompt: 'cat pet cute grooming',
-            overlayText: '✨ 10/10 PERFECT LANDING',
-          },
-        ]
-      : isOcean
-      ? [
-          {
-            title: 'Scene 01: Deep Blue Swell',
-            duration: 5,
-            narration: 'The rhythmic pull of the tides speaks to the soul of every explorer.',
-            visualPrompt: 'ocean sea water beach coast',
-            overlayText: '🌊 MAJESTIC OCEAN VISTAS',
-          },
-          {
-            title: 'Scene 02: Rolling Coastline Waves',
-            duration: 6,
-            narration: 'Crystal blue waters cresting under the infinite afternoon horizon.',
-            visualPrompt: 'waves surf coastal paradise',
-            overlayText: '🏄 UNTAMED NATURE IN 4K',
-          },
-          {
-            title: 'Scene 03: Sunset Over Water',
-            duration: 5,
-            narration: 'Where the sea meets the sky in a breathtaking symphony of light.',
-            visualPrompt: 'ocean sunset drone water',
-            overlayText: '✨ BREATHTAKING EXPEDITION',
-          },
-        ]
-      : isSunset
-      ? [
-          {
-            title: 'Scene 01: Golden Hour Horizon',
-            duration: 5,
-            narration: 'As golden hour hits, the sky transforms into pure cinematic wonder.',
-            visualPrompt: 'sunset golden bridge drone timelapse',
-            overlayText: '🌅 THE GOLDEN HOUR ASCENT',
-          },
-          {
-            title: 'Scene 02: Skyline Silhouette',
-            duration: 6,
-            narration: 'Suspension cables and clouds drifting in synchronized harmony.',
-            visualPrompt: 'golden gate bridge timelapse drone aerial',
-            overlayText: '⚡ ICONIC AERIAL PERSPECTIVE',
-          },
-          {
-            title: 'Scene 03: Twilight Illumination',
-            duration: 5,
-            narration: 'The city awakens as dusk settles over the bay.',
-            visualPrompt: 'city skyline sunset timelapse',
-            overlayText: '🌆 CINEMATIC DUSK MASTER',
-          },
-        ]
-      : [
-          {
-            title: 'Scene 01: The Viral Hook',
-            duration: 5,
-            narration: `In 2026, the way content is created changed forever: ${prompt.slice(0, 40)}.`,
-            visualPrompt: prompt,
-            overlayText: '⚡ STOP SCROLLING: THE FUTURE IS HERE',
-          },
-          {
-            title: 'Scene 02: Instant AI Synthesis',
-            duration: 6,
-            narration: 'From a single text prompt to complete multitrack video scenes in seconds.',
-            visualPrompt: `${prompt} tech cyber action future`,
-            overlayText: '🎬 REAL-TIME GENERATIVE VIDEO',
-          },
-          {
-            title: 'Scene 03: High-Retention Master',
-            duration: 5,
-            narration: 'Text editing, automated subtitles, and 4K exports ready for every platform.',
-            visualPrompt: `${prompt} visual climax showcase`,
-            overlayText: '🚀 READY FOR YOUTUBE & TIKTOK',
-          },
-        ];
-
-    const rawScenes = scriptData?.scenes && scriptData.scenes.length > 0 ? scriptData.scenes : defaultScenes;
-
-    const newClips: TimelineClip[] = [];
-    const newTranscript: TranscriptWord[] = [];
-    let currentTimelineStart = 0;
-    let wordIdCounter = 1;
-
-    rawScenes.slice(0, 4).forEach((sc: any, idx: number) => {
-      const sceneDuration = Math.max(3.5, Number(sc.duration) || 5.5);
-      const matchedVideo = matchVideoForPrompt(sc.visualPrompt || sc.brollKeyword || prompt, idx);
-
-      const videoSrc = isImageMode ? image! : matchedVideo.src;
-      const videoColor = isImageMode ? '#9333EA' : matchedVideo.color;
-
-      newClips.push({
-        id: `clip-ai-v1-${idx}-${Date.now()}`,
-        trackId: 'track-v1',
-        title: isImageMode ? `Image Source: ${prompt.slice(0, 24)}` : `${matchedVideo.title} (Scene ${idx + 1})`,
-        type: 'video',
-        start: currentTimelineStart,
-        duration: sceneDuration,
-        volume: 1,
-        speed: 1.0,
-        muted: false,
-        color: videoColor,
-        visualTag: isImageMode ? 'image-to-video' : matchedVideo.visualTag,
-        src: videoSrc,
-        text: sc.overlayText || `[Scene ${idx + 1}] ${prompt.slice(0, 36)}`,
-      } as any);
-
-      newClips.push({
-        id: `clip-ai-v2-${idx}-${Date.now()}`,
-        trackId: 'track-v2',
-        title: sc.title || `Scene ${idx + 1}`,
-        type: 'overlay',
-        start: currentTimelineStart + 0.5,
-        duration: Math.max(2, sceneDuration - 1.2),
-        volume: 0.8,
-        speed: 1,
-        muted: false,
-        color: '#EC4899',
-      } as any);
-
-      newClips.push({
-        id: `clip-ai-cc-${idx}-${Date.now()}`,
-        trackId: 'track-captions',
-        title: `Caption ${idx + 1}`,
-        type: 'caption',
-        start: currentTimelineStart + 0.2,
-        duration: sceneDuration - 0.4,
-        volume: 1,
-        speed: 1,
-        muted: false,
-        color: '#F59E0B',
-        text: sc.overlayText || sc.narration || prompt.slice(0, 36),
-      } as any);
-
-      newClips.push({
-        id: `clip-ai-a1-${idx}-${Date.now()}`,
-        trackId: 'track-a1',
-        title: `Voiceover: Scene ${idx + 1}`,
-        type: 'audio',
-        start: currentTimelineStart,
-        duration: sceneDuration,
-        volume: 0.95,
-        speed: 1,
-        muted: false,
-        color: '#10B981',
-      } as any);
-
-      const words = (sc.narration || `AI Scene ${idx + 1} generated for ${prompt}`)
-        .split(/\s+/)
-        .filter(Boolean);
-      const wordDuration = sceneDuration / Math.max(1, words.length);
-
-      words.forEach((w: string, wIdx: number) => {
-        const wStart = currentTimelineStart + wIdx * wordDuration;
-        const isFiller = ['um', 'uh', 'like', 'basically', 'you know'].includes(w.toLowerCase().replace(/[^a-z]/g, ''));
-        newTranscript.push({
-          id: `w-gen-${wordIdCounter++}`,
-          word: w,
-          start: parseFloat(wStart.toFixed(2)),
-          end: parseFloat((wStart + wordDuration * 0.9).toFixed(2)),
-          isFiller,
-          confidence: 0.98,
+      let scriptData: any = null;
+      try {
+        const resp = await fetch('/api/ai/generate-script', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, tone, format, mode, image, duration: '20s' }),
         });
+        if (resp.ok) {
+          scriptData = await resp.json();
+        }
+      } catch (e) {
+        console.warn('API script generation warning, using local AI director fallback:', e);
+      }
+
+      // If video-to-video restyler mode was chosen, apply aesthetic color grading
+      if (mode === 'video-to-video') {
+        if (prompt.includes('Cyberpunk') || prompt.includes('Anime')) {
+          setColorGrading(prev => ({ ...prev, lut: 'cyber-neon', contrast: 25, saturation: 35 }));
+        } else if (prompt.includes('Van Gogh') || prompt.includes('Oil')) {
+          setColorGrading(prev => ({ ...prev, lut: 'warm-sunset', contrast: 15, saturation: 40 }));
+        } else if (prompt.includes('1970s') || prompt.includes('Film')) {
+          setColorGrading(prev => ({ ...prev, lut: 'kodachrome', contrast: 10, vignette: 40 }));
+        } else if (prompt.includes('Pixar') || prompt.includes('3D')) {
+          setColorGrading(prev => ({ ...prev, lut: 'clean-hdr', contrast: 20, saturation: 20 }));
+        }
+      }
+
+      const isImageMode = mode === 'image-to-video' && !!image;
+
+      // Extract subject for dynamic scene fallback
+      const cleanSubject = prompt
+        .replace(/^(create a|generate a|make a|video of|video about|clip of|show me|a)\s+/i, '')
+        .slice(0, 48);
+
+      const defaultScenes = isImageMode
+        ? [
+            {
+              title: 'Scene 01: Image Motion Synthesis',
+              duration: 6,
+              narration: `Animating ${cleanSubject || 'uploaded photo'} with cinematic camera push-in and atmospheric lighting.`,
+              visualPrompt: prompt,
+              overlayText: `✨ ${cleanSubject.toUpperCase() || 'IMAGE MOTION SYNTHESIS'}`,
+            },
+            {
+              title: 'Scene 02: Dynamic Camera Orbit',
+              duration: 6,
+              narration: 'Smooth perspective shifts reveal heightened depth and motion detail.',
+              visualPrompt: prompt,
+              overlayText: '🎬 4K CINEMATIC DEPTH',
+            },
+            {
+              title: 'Scene 03: Visual Climax',
+              duration: 5,
+              narration: 'Every detail rendered in brilliant high fidelity for social media publication.',
+              visualPrompt: prompt,
+              overlayText: '🚀 READY TO PUBLISH',
+            },
+          ]
+        : [
+            {
+              title: `Scene 01: The Reveal of ${cleanSubject.slice(0, 20)}`,
+              duration: 5,
+              narration: `In 2026, visual storytelling reached new heights with ${cleanSubject}.`,
+              visualPrompt: prompt,
+              overlayText: `⚡ ${cleanSubject.toUpperCase()}`,
+            },
+            {
+              title: 'Scene 02: The Rising Action',
+              duration: 6,
+              narration: `Every element of ${cleanSubject} captured in motion with stunning clarity.`,
+              visualPrompt: `${prompt} motion action dynamic`,
+              overlayText: '🎬 UNIFIED CREATIVE POWER',
+            },
+            {
+              title: 'Scene 03: Visual Masterpiece',
+              duration: 5,
+              narration: 'From a single text prompt to complete multitrack video scenes in seconds.',
+              visualPrompt: `${prompt} cinematic lighting 4k`,
+              overlayText: '🚀 HIGH-RETENTION MASTER',
+            },
+          ];
+
+      const rawScenes = scriptData?.scenes && scriptData.scenes.length > 0 ? scriptData.scenes : defaultScenes;
+
+      const newClips: TimelineClip[] = [];
+      const newTranscript: TranscriptWord[] = [];
+      let currentTimelineStart = 0;
+      let wordIdCounter = 1;
+
+      rawScenes.slice(0, 4).forEach((sc: any, idx: number) => {
+        const sceneDuration = Math.max(3.5, Number(sc.duration) || 5.5);
+        const matchedVideo = matchVideoForPrompt(sc.visualPrompt || sc.brollKeyword || prompt, idx);
+
+        const videoSrc = isImageMode ? image! : matchedVideo.src;
+        const videoColor = isImageMode ? '#9333EA' : matchedVideo.color;
+        const visualTag = isImageMode ? 'image-to-video' : matchedVideo.visualTag;
+
+        // 1. Primary Video Clip on Track V1
+        const videoClipId = `clip-ai-v1-${idx}-${Date.now()}`;
+        newClips.push({
+          id: videoClipId,
+          trackId: 'track-v1',
+          title: isImageMode ? `Image Anim: ${cleanSubject.slice(0, 20)} (Scene ${idx + 1})` : `${matchedVideo.title} (Scene ${idx + 1})`,
+          type: 'video',
+          start: currentTimelineStart,
+          duration: sceneDuration,
+          volume: 1,
+          speed: 1.0,
+          muted: false,
+          color: videoColor,
+          visualTag: visualTag,
+          src: videoSrc,
+          imageSrc: isImageMode ? image! : undefined,
+          prompt: sc.visualPrompt || prompt,
+          text: sc.overlayText || `[Scene ${idx + 1}] ${prompt.slice(0, 36)}`,
+        } as any);
+
+        // 2. Graphic / Overlay Badge on Track V2
+        newClips.push({
+          id: `clip-ai-v2-${idx}-${Date.now()}`,
+          trackId: 'track-v2',
+          title: sc.title || `Scene ${idx + 1}`,
+          type: 'overlay',
+          start: currentTimelineStart + 0.5,
+          duration: Math.max(2, sceneDuration - 1.2),
+          volume: 0.8,
+          speed: 1,
+          muted: false,
+          color: '#EC4899',
+        } as any);
+
+        // 3. Smart Captions on Track CC
+        newClips.push({
+          id: `clip-ai-cc-${idx}-${Date.now()}`,
+          trackId: 'track-captions',
+          title: `Caption ${idx + 1}`,
+          type: 'caption',
+          start: currentTimelineStart + 0.2,
+          duration: sceneDuration - 0.4,
+          volume: 1,
+          speed: 1,
+          muted: false,
+          color: '#F59E0B',
+          text: sc.overlayText || sc.narration || prompt.slice(0, 36),
+        } as any);
+
+        // 4. Voiceover & Spoken Dialogue on Track A1
+        newClips.push({
+          id: `clip-ai-a1-${idx}-${Date.now()}`,
+          trackId: 'track-a1',
+          title: `Voiceover: Scene ${idx + 1}`,
+          type: 'audio',
+          start: currentTimelineStart,
+          duration: sceneDuration,
+          volume: 0.95,
+          speed: 1,
+          muted: false,
+          color: '#10B981',
+        } as any);
+
+        // 5. Build synchronized word-by-word Descript transcript
+        const words = (sc.narration || `AI Scene ${idx + 1} generated for ${prompt}`)
+          .split(/\s+/)
+          .filter(Boolean);
+        const wordDuration = sceneDuration / Math.max(1, words.length);
+
+        words.forEach((w: string, wIdx: number) => {
+          const wStart = currentTimelineStart + wIdx * wordDuration;
+          const isFiller = ['um', 'uh', 'like', 'basically', 'you know'].includes(w.toLowerCase().replace(/[^a-z]/g, ''));
+          newTranscript.push({
+            id: `w-gen-${wordIdCounter++}`,
+            word: w,
+            start: parseFloat(wStart.toFixed(2)),
+            end: parseFloat((wStart + wordDuration * 0.9).toFixed(2)),
+            isFiller,
+            confidence: 0.98,
+          });
+        });
+
+        currentTimelineStart += sceneDuration;
       });
 
-      currentTimelineStart += sceneDuration;
-    });
+      // 6. Background Score on Track A2 spanning the whole duration
+      newClips.push({
+        id: `clip-ai-a2-${Date.now()}`,
+        trackId: 'track-a2',
+        title: `Soundtrack: ${tone.toUpperCase()} Ambient Score`,
+        type: 'audio',
+        start: 0,
+        duration: currentTimelineStart,
+        volume: 0.35,
+        speed: 1,
+        muted: false,
+        color: '#8B5CF6',
+      } as any);
 
-    newClips.push({
-      id: `clip-ai-a2-${Date.now()}`,
-      trackId: 'track-a2',
-      title: `Soundtrack: ${tone.toUpperCase()} Ambient Score`,
-      type: 'audio',
-      start: 0,
-      duration: currentTimelineStart,
-      volume: 0.35,
-      speed: 1,
-      muted: false,
-      color: '#8B5CF6',
-    } as any);
+      setClips(newClips);
+      setTranscript(newTranscript);
+      if (newClips[0]) setSelectedClipId(newClips[0].id);
+      setCurrentTime(0);
 
-    setClips(newClips);
-    setTranscript(newTranscript);
-    if (newClips[0]) setSelectedClipId(newClips[0].id);
-    setCurrentTime(0);
+      // Auto-resume audio manager singleton and commence playback through master volume
+      audioEngine.resume();
+      audioEngine.setMasterVolume(masterVolume);
+      audioEngine.setTrackVolume('track-v1', 1.0);
+      setIsPlaying(true);
+      setIsAIGenerating(false);
 
-    audioEngine.resume();
-    setIsPlaying(true);
-    setIsAIGenerating(false);
-
-    const projectTitle = scriptData?.projectTitle || prompt.slice(0, 42);
-    return { title: projectTitle, projectTitle };
-  }, []);
+      const projectTitle = scriptData?.projectTitle || cleanSubject || prompt.slice(0, 42);
+      return { title: projectTitle, projectTitle };
+    },
+    [masterVolume]
+  );
 
   const updateAudioChannel = useCallback((id: string, u: Partial<AudioMixerChannel>) => {
     setAudioChannels(p => p.map(c => (c.trackId === id ? { ...c, ...u } : c)));
+    if (u.volume !== undefined) {
+      audioEngine.setTrackVolume(id, u.volume);
+    }
+    if (u.eq) {
+      audioEngine.updateEq(id, u.eq);
+    }
+    if (u.studioSoundActive !== undefined) {
+      audioEngine.setStudioSound(u.studioSoundActive);
+    }
   }, []);
 
   const toggleStudioSound = useCallback(() => {
