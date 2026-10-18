@@ -15,7 +15,7 @@ export interface VideoAsset {
   isGenerative: boolean;
 }
 
-export function matchVideoForPrompt(prompt: string): VideoAsset {
+export function matchVideoForPrompt(prompt: string, _sceneIndex?: number): VideoAsset {
   const p = prompt.toLowerCase();
   const hash = prompt.split('').reduce((a, b) => a + b.charCodeAt(0), 0) % 360;
   return {
@@ -337,3 +337,4 @@ export function drawLiveGenerativeScene(
 
 // BACKWARD COMPATIBILITY - keeps old imports working
 export const VERIFIED_STOCK_VIDEOS: VideoAsset[] = [];
+export const STOCK_VIDEOS: VideoAsset[] = [];
