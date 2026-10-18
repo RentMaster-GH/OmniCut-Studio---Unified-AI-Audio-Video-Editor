@@ -67,7 +67,7 @@ interface ProjectContextType {
   setShowSafeMargins: (show: boolean) => void;
   captionStyle: CaptionStyle;
   setCaptionStyle: React.Dispatch<React.SetStateAction<CaptionStyle>>;
-  generateAIVideo: (prompt: string, tone?: string, format?: string) => Promise<any>;
+  generateAIVideo: (prompt: string, tone?: string, format?: string, mode?: string, image?: string | null) => Promise<any>;
   isAIGenerating: boolean;
   colorGrading: ColorGrading;
   setColorGrading: React.Dispatch<React.SetStateAction<ColorGrading>>;
@@ -208,7 +208,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     audioEngine.setMasterVolume(vol);
   }, []);
 
-  // Fixed: resume audio context on user action to bypass browser auto-play blocks
   const play = useCallback(() => {
     audioEngine.resume();
     if (currentTime >= duration) setCurrentTime(0);
@@ -259,7 +258,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setSelectedClipId(p => (p === id ? null : p));
   }, []);
 
-  // Global Pro Editor Keyboard Shortcuts with stable refs
   const selectedClipIdRef = useRef(selectedClipId);
   selectedClipIdRef.current = selectedClipId;
   const togglePlayRef = useRef(togglePlay);
@@ -355,8 +353,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const generateTranscriptFromClips = useCallback(async () => setTranscript(INITIAL_TRANSCRIPT), []);
 
-  // Robust AI Video Generation engine with live video matching and multi-scene assembly
-  const generateAIVideo = useCallback(async (prompt: string, tone = 'engaging', format = '16:9') => {
+  // Robust AI Video Generation engine with live video matching + image-to-video support
+  const generateAIVideo = useCallback(async (prompt: string, tone = 'engaging', format = '16:9', mode = 'text-to-video', image?: string | null) => {
     setIsAIGenerating(true);
 
     let scriptData: any = null;
@@ -364,7 +362,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const resp = await fetch('/api/ai/generate-script', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, tone, format, duration: '20s' }),
+        body: JSON.stringify({ prompt, tone, format, mode, image, duration: '20s' }),
       });
       if (resp.ok) {
         scriptData = await resp.json();
@@ -373,12 +371,23 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       console.warn('API script generation warning, using local AI director fallback:', e);
     }
 
-    // Default scenes if API response is not available
+    const isImageMode = mode === 'image-to-video' && !!image;
+
     const isCat = prompt.toLowerCase().includes('cat') || prompt.toLowerCase().includes('kitten');
     const isOcean = prompt.toLowerCase().includes('ocean') || prompt.toLowerCase().includes('sea') || prompt.toLowerCase().includes('water');
     const isSunset = prompt.toLowerCase().includes('sunset') || prompt.toLowerCase().includes('drone') || prompt.toLowerCase().includes('sky');
 
-    const defaultScenes = isCat
+    const defaultScenes = isImageMode
+      ? [
+          {
+            title: 'Scene 01: Image to Video Animation',
+            duration: 6,
+            narration: prompt,
+            visualPrompt: prompt,
+            overlayText: `✨ ${prompt.slice(0, 40)}`,
+          },
+        ]
+      : isCat
       ? [
           {
             title: 'Scene 01: The Feline Stalker',
@@ -485,25 +494,25 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const sceneDuration = Math.max(3.5, Number(sc.duration) || 5.5);
       const matchedVideo = matchVideoForPrompt(sc.visualPrompt || sc.brollKeyword || prompt, idx);
 
-      // 1. Primary Video Clip on Track V1
-      const videoClipId = `clip-ai-v1-${idx}-${Date.now()}`;
+      const videoSrc = isImageMode ? image! : matchedVideo.src;
+      const videoColor = isImageMode ? '#9333EA' : matchedVideo.color;
+
       newClips.push({
-        id: videoClipId,
+        id: `clip-ai-v1-${idx}-${Date.now()}`,
         trackId: 'track-v1',
-        title: `${matchedVideo.title} (Scene ${idx + 1})`,
+        title: isImageMode ? `Image Source: ${prompt.slice(0, 24)}` : `${matchedVideo.title} (Scene ${idx + 1})`,
         type: 'video',
         start: currentTimelineStart,
         duration: sceneDuration,
         volume: 1,
         speed: 1.0,
         muted: false,
-        color: matchedVideo.color,
-        visualTag: matchedVideo.visualTag,
-        src: matchedVideo.src,
+        color: videoColor,
+        visualTag: isImageMode ? 'image-to-video' : matchedVideo.visualTag,
+        src: videoSrc,
         text: sc.overlayText || `[Scene ${idx + 1}] ${prompt.slice(0, 36)}`,
       } as any);
 
-      // 2. Graphic / Overlay Badge on Track V2
       newClips.push({
         id: `clip-ai-v2-${idx}-${Date.now()}`,
         trackId: 'track-v2',
@@ -517,7 +526,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         color: '#EC4899',
       } as any);
 
-      // 3. Smart Captions on Track CC
       newClips.push({
         id: `clip-ai-cc-${idx}-${Date.now()}`,
         trackId: 'track-captions',
@@ -532,7 +540,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         text: sc.overlayText || sc.narration || prompt.slice(0, 36),
       } as any);
 
-      // 4. Voiceover & Spoken Dialogue on Track A1
       newClips.push({
         id: `clip-ai-a1-${idx}-${Date.now()}`,
         trackId: 'track-a1',
@@ -546,7 +553,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         color: '#10B981',
       } as any);
 
-      // 5. Build synchronized word-by-word Descript transcript
       const words = (sc.narration || `AI Scene ${idx + 1} generated for ${prompt}`)
         .split(/\s+/)
         .filter(Boolean);
@@ -568,7 +574,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       currentTimelineStart += sceneDuration;
     });
 
-    // 6. Background Score on Track A2 spanning the whole duration
     newClips.push({
       id: `clip-ai-a2-${Date.now()}`,
       trackId: 'track-a2',
@@ -587,7 +592,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (newClips[0]) setSelectedClipId(newClips[0].id);
     setCurrentTime(0);
 
-    // Auto-resume audio engine and commence playback
     audioEngine.resume();
     setIsPlaying(true);
     setIsAIGenerating(false);
