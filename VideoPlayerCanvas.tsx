@@ -4,19 +4,59 @@ import {
   Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
   Monitor, Smartphone, Square, Shield, Sliders, Sparkles, Film,
 } from 'lucide-react';
-import { drawLiveGenerativeScene } from "./videoLibrary";
 import { ColorGrading } from "./types";
 
-function getCssFilter(colorGrading: ColorGrading): string {
-  const brightness = 1 + (colorGrading.brightness || 0) / 100;
-  const contrast = 1 + (colorGrading.contrast || 0) / 100;
-  const saturate = 1 + (colorGrading.saturation || 0) / 100;
-  let filter = `brightness(${brightness}) contrast(${contrast}) saturate(${saturate})`;
-  if (colorGrading.lut === 'cyber-neon') filter += ' hue-rotate(185deg) contrast(1.25)';
-  else if (colorGrading.lut === 'noir') filter += ' grayscale(100%) contrast(1.35)';
-  else if (colorGrading.lut === 'cinematic-teal') filter += ' hue-rotate(-15deg) contrast(1.15)';
-  else if (colorGrading.lut === 'warm-sunset') filter += ' sepia(35%) saturate(1.4)';
-  return filter;
+const imageCache = new Map<string, HTMLImageElement>();
+
+function getCssFilter(cg: ColorGrading): string {
+  return `contrast(${100 + (cg.contrast || 0)}%) saturate(${100 + (cg.saturation || 0)}%) brightness(${100 + (cg.exposure || 0)}%)`;
+}
+
+function drawLiveGenerativeScene(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  time: number,
+  prompt: string,
+  visualTag: string,
+  isPlaying: boolean,
+  imageSrc?: string
+) {
+  if (imageSrc) {
+    let img = imageCache.get(imageSrc);
+    if (!img) {
+      img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = imageSrc;
+      imageCache.set(imageSrc, img);
+    }
+    if (img.complete && img.naturalWidth > 0) {
+      ctx.save();
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, w, h);
+      const zoom = 1.1 + Math.sin(time * 0.05) * 0.1;
+      const panX = Math.cos(time * 0.02) * 20;
+      const panY = Math.sin(time * 0.03) * 10;
+      ctx.translate(w / 2 + panX, h / 2 + panY);
+      ctx.scale(zoom, zoom);
+      const r = img.naturalWidth / img.naturalHeight;
+      let dw = w;
+      let dh = h;
+      if (r > w / h) dw = h * r;
+      else dh = w / r;
+      ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+      ctx.restore();
+      return;
+    }
+  }
+
+  // Fallback generative while image loads
+  ctx.fillStyle = '#18181b';
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = '#3f3f46';
+  ctx.font = 'bold 14px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(`GENERATING: ${prompt.slice(0, 40)}`, w / 2, h / 2);
 }
 
 export const VideoPlayerCanvas: React.FC = () => {
@@ -50,7 +90,7 @@ export const VideoPlayerCanvas: React.FC = () => {
     const m = Math.floor((sec % 3600) / 60);
     const s = Math.floor(sec % 60);
     const f = Math.floor((sec % 1) * 30);
-    return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}:${f.toString().padStart(2,'0')}`;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}:${f.toString().padStart(2, '0')}`;
   };
 
   useEffect(() => {
@@ -64,7 +104,6 @@ export const VideoPlayerCanvas: React.FC = () => {
     const activeOverlay = clips.find(c => c.trackId === 'track-v2' && currentTime >= c.start && currentTime <= c.start + c.duration);
     const activeCaption = clips.find(c => c.trackId === 'track-captions' && currentTime >= c.start && currentTime <= c.start + c.duration);
 
-    // SELF-SUFFICIENT: ALWAYS GENERATIVE - No isVideoLoaded check
     drawLiveGenerativeScene(
       ctx, width, height, currentTime,
       activeVideo?.prompt || activeVideo?.title || 'OmniCut Studio AI Scene',
@@ -76,26 +115,26 @@ export const VideoPlayerCanvas: React.FC = () => {
     if (colorGrading.vignette > 0) {
       ctx.save();
       const vigRadius = Math.max(width, height) * 0.75;
-      const vig = ctx.createRadialGradient(width/2, height/2, vigRadius*0.4, width/2, height/2, vigRadius);
+      const vig = ctx.createRadialGradient(width / 2, height / 2, vigRadius * 0.4, width / 2, height / 2, vigRadius);
       vig.addColorStop(0, 'rgba(0,0,0,0)');
-      vig.addColorStop(1, `rgba(0,0,0,${colorGrading.vignette/100})`);
+      vig.addColorStop(1, `rgba(0,0,0,${colorGrading.vignette / 100})`);
       ctx.fillStyle = vig;
-      ctx.fillRect(0,0,width,height);
+      ctx.fillRect(0, 0, width, height);
       ctx.restore();
     }
 
     if (activeOverlay) {
       ctx.save();
       ctx.fillStyle = 'rgba(236,72,153,0.2)';
-      ctx.fillRect(width*0.08, height*0.1, width*0.84, height*0.18);
+      ctx.fillRect(width * 0.08, height * 0.1, width * 0.84, height * 0.18);
       ctx.strokeStyle = '#EC4899';
       ctx.lineWidth = 2.5;
-      ctx.strokeRect(width*0.08, height*0.1, width*0.84, height*0.18);
+      ctx.strokeRect(width * 0.08, height * 0.1, width * 0.84, height * 0.18);
       ctx.fillStyle = '#FFFFFF';
       ctx.font = 'bold 24px Plus Jakarta Sans, sans-serif';
       ctx.shadowColor = 'rgba(0,0,0,0.85)';
       ctx.shadowBlur = 10;
-      ctx.fillText(`⚡ ${activeOverlay.title}`, width*0.12, height*0.21);
+      ctx.fillText(`⚡ ${activeOverlay.title}`, width * 0.12, height * 0.21);
       ctx.restore();
     }
 
@@ -106,7 +145,7 @@ export const VideoPlayerCanvas: React.FC = () => {
       ctx.font = '800 28px Syne, sans-serif';
       ctx.shadowColor = 'rgba(0,0,0,0.9)';
       ctx.shadowBlur = 16;
-      ctx.fillText(activeVideo.text, width/2, height*0.36);
+      ctx.fillText(activeVideo.text, width / 2, height * 0.36);
       ctx.restore();
     }
 
@@ -114,32 +153,33 @@ export const VideoPlayerCanvas: React.FC = () => {
       ctx.save();
       const cap = captionStyle;
       const textToRender = cap.uppercase ? activeCaption.text.toUpperCase() : activeCaption.text;
-      ctx.font = `800 ${cap.fontSize||36}px ${cap.fontFamily||'Syne, sans-serif'}`;
+      ctx.font = `800 ${cap.fontSize || 36}px ${cap.fontFamily || 'Syne, sans-serif'}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      const posX = width/2;
-      const posY = (height*(cap.positionY||80))/100;
+      const posX = width / 2;
+      const posY = (height * (cap.positionY || 80)) / 100;
       const metrics = ctx.measureText(textToRender);
       const textWidth = metrics.width;
-      const pad = cap.backgroundPadding||16;
+      const pad = cap.backgroundPadding || 16;
       if (cap.backgroundColor && cap.backgroundColor !== 'transparent') {
         ctx.fillStyle = cap.backgroundColor;
-        const boxX = posX - textWidth/2 - pad;
-        const boxY = posY - 26 - pad/2;
-        const boxW = textWidth + pad*2;
+        const boxX = posX - textWidth / 2 - pad;
+        const boxY = posY - 26 - pad / 2;
+        const boxW = textWidth + pad * 2;
         const boxH = 52 + pad;
-        const radius = cap.borderRadius||8;
+        const radius = cap.borderRadius || 8;
         ctx.beginPath();
         // @ts-ignore
-        ctx.roundRect(boxX, boxY, boxW, boxH, radius);
+        if (ctx.roundRect) ctx.roundRect(boxX, boxY, boxW, boxH, radius);
+        else ctx.rect(boxX, boxY, boxW, boxH);
         ctx.fill();
       }
       if (cap.strokeWidth > 0) {
-        ctx.strokeStyle = cap.strokeColor||'#000000';
+        ctx.strokeStyle = cap.strokeColor || '#000000';
         ctx.lineWidth = cap.strokeWidth;
         ctx.strokeText(textToRender, posX, posY);
       }
-      ctx.fillStyle = cap.highlightColor||'#FACC15';
+      ctx.fillStyle = cap.highlightColor || '#FACC15';
       ctx.fillText(textToRender, posX, posY);
       ctx.restore();
     }
@@ -147,22 +187,22 @@ export const VideoPlayerCanvas: React.FC = () => {
     ctx.save();
     const progressPct = duration > 0 ? currentTime / duration : 0;
     ctx.fillStyle = 'rgba(255,255,255,0.2)';
-    ctx.fillRect(0, height-6, width, 6);
-    const progGrad = ctx.createLinearGradient(0,0,width*progressPct,0);
+    ctx.fillRect(0, height - 6, width, 6);
+    const progGrad = ctx.createLinearGradient(0, 0, width * progressPct, 0);
     progGrad.addColorStop(0, '#3B82F6');
     progGrad.addColorStop(1, '#8B5CF6');
     ctx.fillStyle = progGrad;
-    ctx.fillRect(0, height-6, width*progressPct, 6);
+    ctx.fillRect(0, height - 6, width * progressPct, 6);
     ctx.restore();
 
     if (showSafeMargins) {
       ctx.save();
       ctx.strokeStyle = 'rgba(234,179,8,0.6)';
-      ctx.setLineDash([6,6]);
+      ctx.setLineDash([6, 6]);
       ctx.lineWidth = 1.5;
-      ctx.strokeRect(width*0.05, height*0.05, width*0.9, height*0.9);
+      ctx.strokeRect(width * 0.05, height * 0.05, width * 0.9, height * 0.9);
       ctx.strokeStyle = 'rgba(59,130,246,0.6)';
-      ctx.strokeRect(width*0.1, height*0.1, width*0.8, height*0.8);
+      ctx.strokeRect(width * 0.1, height * 0.1, width * 0.8, height * 0.8);
       ctx.restore();
     }
   }, [currentTime, duration, clips, captionStyle, colorGrading, showSafeMargins, aspectRatio, isPlaying, activeVideo]);
@@ -190,20 +230,20 @@ export const VideoPlayerCanvas: React.FC = () => {
         </div>
         <div className="flex items-center gap-1.5">
           <div className="flex items-center bg-zinc-800/80 rounded-lg p-0.5 border border-zinc-700/60">
-            <button onClick={() => setAspectRatio('16:9')} className={`px-2 py-1 rounded text-[11px] flex items-center gap-1 transition ${aspectRatio==='16:9'?'bg-blue-600 text-white font-medium shadow-sm':'text-zinc-400 hover:text-white'}`}>
+            <button onClick={() => setAspectRatio('16:9')} className={`px-2 py-1 rounded text-[11px] flex items-center gap-1 transition ${aspectRatio === '16:9' ? 'bg-blue-600 text-white font-medium shadow-sm' : 'text-zinc-400 hover:text-white'}`}>
               <Monitor className="w-3 h-3" /> 16:9
             </button>
-            <button onClick={() => setAspectRatio('9:16')} className={`px-2 py-1 rounded text-[11px] flex items-center gap-1 transition ${aspectRatio==='9:16'?'bg-blue-600 text-white font-medium shadow-sm':'text-zinc-400 hover:text-white'}`}>
+            <button onClick={() => setAspectRatio('9:16')} className={`px-2 py-1 rounded text-[11px] flex items-center gap-1 transition ${aspectRatio === '9:16' ? 'bg-blue-600 text-white font-medium shadow-sm' : 'text-zinc-400 hover:text-white'}`}>
               <Smartphone className="w-3 h-3" /> 9:16
             </button>
-            <button onClick={() => setAspectRatio('1:1')} className={`px-2 py-1 rounded text-[11px] flex items-center gap-1 transition ${aspectRatio==='1:1'?'bg-blue-600 text-white font-medium shadow-sm':'text-zinc-400 hover:text-white'}`}>
+            <button onClick={() => setAspectRatio('1:1')} className={`px-2 py-1 rounded text-[11px] flex items-center gap-1 transition ${aspectRatio === '1:1' ? 'bg-blue-600 text-white font-medium shadow-sm' : 'text-zinc-400 hover:text-white'}`}>
               <Square className="w-3 h-3" /> 1:1
             </button>
           </div>
-          <button onClick={() => setShowSafeMargins(!showSafeMargins)} className={`p-1.5 rounded-lg border transition ${showSafeMargins?'bg-amber-500/20 border-amber-500/50 text-amber-300':'bg-zinc-800/60 border-zinc-700/50 text-zinc-400 hover:text-white'}`}>
+          <button onClick={() => setShowSafeMargins(!showSafeMargins)} className={`p-1.5 rounded-lg border transition ${showSafeMargins ? 'bg-amber-500/20 border-amber-500/50 text-amber-300' : 'bg-zinc-800/60 border-zinc-700/50 text-zinc-400 hover:text-white'}`}>
             <Shield className="w-3.5 h-3.5" />
           </button>
-          <button onClick={() => setShowColorInspector(!showColorInspector)} className={`p-1.5 rounded-lg border transition ${showColorInspector?'bg-blue-500/20 border-blue-500/50 text-blue-300':'bg-zinc-800/60 border-zinc-700/50 text-zinc-400 hover:text-white'}`}>
+          <button onClick={() => setShowColorInspector(!showColorInspector)} className={`p-1.5 rounded-lg border transition ${showColorInspector ? 'bg-blue-500/20 border-blue-500/50 text-blue-300' : 'bg-zinc-800/60 border-zinc-700/50 text-zinc-400 hover:text-white'}`}>
             <Sliders className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -225,12 +265,12 @@ export const VideoPlayerCanvas: React.FC = () => {
             </button>
           )}
           <div className="absolute top-3 left-3 bg-zinc-900/85 backdrop-blur-md px-2 py-0.5 rounded text-[10px] text-zinc-300 border border-zinc-700/60 font-mono z-20">
-            LUT: {colorGrading.lut.replace('-',' ').toUpperCase()} • 100% GENERATIVE
+            LUT: {colorGrading.lut.replace('-', ' ').toUpperCase()} • LIFE-LIKE AI
           </div>
           <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
             <div className="flex items-center gap-1.5 bg-zinc-900/85 backdrop-blur-md px-2 py-0.5 rounded text-[10px] text-emerald-400 border border-emerald-800/60 font-mono">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-              <span>SELF-SUFFICIENT</span>
+              <span>LIFE-LIKE</span>
             </div>
           </div>
         </div>
@@ -248,8 +288,8 @@ export const VideoPlayerCanvas: React.FC = () => {
           <input type="range" min="0" max={duration} step="0.05" value={currentTime} onChange={e => seek(parseFloat(e.target.value))} className="w-full accent-blue-500 h-1.5 bg-zinc-800 rounded-lg cursor-pointer" />
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => setMasterVolume(masterVolume===0?0.85:0)} className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition">
-            {masterVolume===0 ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4" />}
+          <button onClick={() => setMasterVolume(masterVolume === 0 ? 0.85 : 0)} className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition">
+            {masterVolume === 0 ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4" />}
           </button>
           <input type="range" min="0" max="1" step="0.05" value={masterVolume} onChange={e => setMasterVolume(parseFloat(e.target.value))} className="w-16 accent-blue-500 h-1 bg-zinc-800 rounded cursor-pointer" />
         </div>
