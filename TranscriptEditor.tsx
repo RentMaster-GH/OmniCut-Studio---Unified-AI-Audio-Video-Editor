@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useProject } from "./ProjectContext";
+import { useProject } from '../../context/ProjectContext';
 import {
   Sparkles,
   Scissors,
@@ -12,8 +12,9 @@ import {
   RefreshCw,
   Clock,
   AlertCircle,
+  Upload,
 } from 'lucide-react';
-import { TranscriptWord } from "./types";
+import { TranscriptWord } from '../../types';
 
 export const TranscriptEditor: React.FC = () => {
   const {
@@ -26,6 +27,7 @@ export const TranscriptEditor: React.FC = () => {
     generateTranscriptFromClips,
     isStudioSoundActive,
     toggleStudioSound,
+    setShowUploadModal,
   } = useProject();
 
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -84,16 +86,28 @@ export const TranscriptEditor: React.FC = () => {
             </div>
           </div>
 
-          {/* AI Re-transcribe */}
-          <button
-            onClick={handleReTranscribe}
-            disabled={isTranscribing}
-            title="Re-analyze audio with Gemini AI"
-            className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition flex items-center gap-1 text-[11px]"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isTranscribing ? 'animate-spin text-blue-400' : ''}`} />
-            <span className="hidden sm:inline">AI Sync</span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            {/* Import Script / Doc */}
+            <button
+              onClick={() => setShowUploadModal(true)}
+              title="Import Script, Subtitles, or Document (.srt, .vtt, .txt, .pdf)"
+              className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition flex items-center gap-1 text-[11px]"
+            >
+              <Upload className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden sm:inline">Import Script</span>
+            </button>
+
+            {/* AI Re-transcribe */}
+            <button
+              onClick={handleReTranscribe}
+              disabled={isTranscribing}
+              title="Re-analyze audio with Gemini AI"
+              className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition flex items-center gap-1 text-[11px]"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isTranscribing ? 'animate-spin text-blue-400' : ''}`} />
+              <span className="hidden sm:inline">AI Sync</span>
+            </button>
+          </div>
         </div>
 
         {/* 1-Click Filler Words Removal Banner */}

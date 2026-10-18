@@ -1,5 +1,5 @@
 import React from 'react';
-import { useProject } from "./ProjectContext";
+import { useProject } from '../../context/ProjectContext';
 import {
   Film,
   Sparkles,
@@ -14,6 +14,10 @@ import {
   Moon,
   Sun,
   Laptop,
+  Upload,
+  Keyboard,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 
 export const HeaderNavBar: React.FC = () => {
@@ -22,10 +26,14 @@ export const HeaderNavBar: React.FC = () => {
     setActiveTab,
     setShowExportModal,
     setShowSecurityModal,
+    setShowUploadModal,
+    setShowShortcutsModal,
     collaborators,
     cloudSyncStatus,
     isEndToEndEncrypted,
     isBiometricLocked,
+    masterVolume,
+    setMasterVolume,
     theme,
     setTheme,
   } = useProject();
@@ -48,66 +56,71 @@ export const HeaderNavBar: React.FC = () => {
           </div>
         </div>
 
-        {/* Central Workspace Modes Switcher */}
-        <nav className="hidden md:flex items-center bg-zinc-900/90 rounded-xl p-1 border border-zinc-800 ml-3">
+        {/* Central Workspace Modes Switcher - accessible on all screens */}
+        <nav className="flex items-center bg-zinc-900/90 rounded-xl p-1 border border-zinc-800 ml-1.5 sm:ml-3 overflow-x-auto max-w-[50vw] sm:max-w-none">
           <button
             onClick={() => setActiveTab('editor')}
-            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition font-medium ${
+            title="Editor Studio (Unified Multitrack & Player)"
+            className={`px-2.5 sm:px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition font-medium shrink-0 ${
               activeTab === 'editor'
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-zinc-400 hover:text-white'
             }`}
           >
-            <Film className="w-3.5 h-3.5" />
-            <span>Editor Studio</span>
+            <Film className="w-3.5 h-3.5 text-blue-200" />
+            <span className="hidden sm:inline">Editor Studio</span>
           </button>
 
           <button
             onClick={() => setActiveTab('invideo_ai')}
-            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition font-medium ${
+            title="Invideo AI Prompt-to-Video Engine"
+            className={`px-2.5 sm:px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition font-medium shrink-0 ${
               activeTab === 'invideo_ai'
                 ? 'bg-purple-600 text-white shadow-sm'
                 : 'text-zinc-400 hover:text-white'
             }`}
           >
             <Sparkles className="w-3.5 h-3.5 text-purple-300" />
-            <span>Invideo AI</span>
+            <span className="hidden sm:inline">Invideo AI</span>
           </button>
 
           <button
             onClick={() => setActiveTab('audio_mixer')}
-            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition font-medium ${
+            title="Audio & EQ Suite"
+            className={`px-2.5 sm:px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition font-medium shrink-0 ${
               activeTab === 'audio_mixer'
                 ? 'bg-emerald-600 text-white shadow-sm'
                 : 'text-zinc-400 hover:text-white'
             }`}
           >
             <Sliders className="w-3.5 h-3.5 text-emerald-300" />
-            <span>Audio & EQ</span>
+            <span className="hidden sm:inline">Audio & EQ</span>
           </button>
 
           <button
             onClick={() => setActiveTab('analytics')}
-            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition font-medium ${
+            title="Analytics & Retention"
+            className={`px-2.5 sm:px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition font-medium shrink-0 ${
               activeTab === 'analytics'
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-zinc-400 hover:text-white'
             }`}
           >
-            <BarChart3 className="w-3.5 h-3.5" />
-            <span>Analytics</span>
+            <BarChart3 className="w-3.5 h-3.5 text-blue-300" />
+            <span className="hidden sm:inline">Analytics</span>
           </button>
 
           <button
             onClick={() => setActiveTab('collab')}
-            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition font-medium ${
+            title="Team & Versions"
+            className={`px-2.5 sm:px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition font-medium shrink-0 ${
               activeTab === 'collab'
                 ? 'bg-indigo-600 text-white shadow-sm'
                 : 'text-zinc-400 hover:text-white'
             }`}
           >
             <Users className="w-3.5 h-3.5 text-indigo-300" />
-            <span>Team & Versions</span>
+            <span className="hidden sm:inline">Team</span>
           </button>
         </nav>
       </div>
@@ -153,6 +166,39 @@ export const HeaderNavBar: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Quick Audio Mute / Unmute Header Toggle */}
+        <button
+          onClick={() => setMasterVolume(masterVolume === 0 ? 0.85 : 0)}
+          className={`p-1.5 rounded-lg border transition ${
+            masterVolume > 0
+              ? 'bg-emerald-950/50 border-emerald-800/60 text-emerald-300 hover:bg-emerald-900/60'
+              : 'bg-red-950/50 border-red-800/60 text-red-400 hover:bg-red-900/60'
+          }`}
+          title={masterVolume === 0 ? 'Unmute Video & Audio' : 'Mute Video & Audio'}
+        >
+          {masterVolume === 0 ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+        </button>
+
+        {/* Shortcuts & Guide */}
+        <button
+          onClick={() => setShowShortcutsModal(true)}
+          className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white transition text-xs"
+          title="Keyboard Shortcuts & User Guide"
+        >
+          <Keyboard className="w-3.5 h-3.5 text-zinc-400" />
+          <span className="hidden md:inline">Shortcuts</span>
+        </button>
+
+        {/* Upload / Import Media & Docs CTA */}
+        <button
+          onClick={() => setShowUploadModal(true)}
+          className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-600 text-zinc-200 hover:text-white font-semibold text-xs shadow transition flex items-center gap-1.5"
+          title="Upload Video, Audio, Documents, Scripts & Subtitles"
+        >
+          <Upload className="w-3.5 h-3.5 text-blue-400" />
+          <span>Import Media</span>
+        </button>
 
         {/* Export Button */}
         <button

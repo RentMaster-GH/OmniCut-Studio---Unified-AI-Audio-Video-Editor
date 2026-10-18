@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { useProject } from "./ProjectContext";
+import { useProject } from '../../context/ProjectContext';
 import {
   Play,
   Pause,
@@ -18,8 +18,8 @@ import {
   Settings,
   Film,
 } from 'lucide-react';
-import { drawLiveGenerativeScene } from "./videoLibrary";
-import { ColorGrading } from "./types";
+import { drawLiveGenerativeScene } from '../../utils/videoLibrary';
+import { ColorGrading } from '../../types';
 
 function getCssFilter(colorGrading: ColorGrading): string {
   const brightness = 1 + (colorGrading.brightness || 0) / 100;
@@ -69,6 +69,7 @@ export const VideoPlayerCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const activeSrcRef = useRef<string>('');
   const [isHovering, setIsHovering] = useState<boolean>(false);
   const [showColorInspector, setShowColorInspector] = useState<boolean>(false);
   const [isVideoLoaded, setIsVideoLoaded] = useState<boolean>(false);
@@ -78,33 +79,49 @@ export const VideoPlayerCanvas: React.FC = () => {
     c => c.trackId === 'track-v1' && currentTime >= c.start && currentTime <= c.start + c.duration
   );
 
-  // Sync active video playback
+  // Sync active video playback and ensure sound is audible
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
+    // Apply audio volume and mute status to video element
+    const effectiveMuted = masterVolume === 0 || !!activeVideo?.muted;
+    const effectiveVolume = effectiveMuted ? 0 : Math.max(0, Math.min(1, masterVolume * (activeVideo?.volume ?? 1)));
+    video.muted = effectiveMuted;
+    video.volume = effectiveVolume;
+
     if (activeVideo?.src) {
-      if (video.src !== activeVideo.src) {
-        setIsVideoLoaded(false);
+      if (activeSrcRef.current !== activeVideo.src) {
+        activeSrcRef.current = activeVideo.src;
         video.src = activeVideo.src;
         video.load();
       }
 
       const clipLocalTime = Math.max(0, currentTime - activeVideo.start);
-      if (Math.abs(video.currentTime - clipLocalTime) > 0.35) {
+      // Avoid continuous seek calls during normal 60fps playback; only correct noticeable drift
+      if (Math.abs(video.currentTime - clipLocalTime) > 0.8 || !isPlaying) {
         video.currentTime = clipLocalTime;
       }
 
       if (isPlaying && video.paused) {
-        video.play().catch(() => {});
+        video.play().catch(err => {
+          // If browser restricts unmuted autoplay, try muted once and prompt user
+          if (video.muted === false) {
+            video.muted = true;
+            video.play().catch(() => {});
+          }
+        });
       } else if (!isPlaying && !video.paused) {
         video.pause();
       }
     } else {
       if (!video.paused) video.pause();
-      setIsVideoLoaded(false);
+      if (activeSrcRef.current !== '') {
+        activeSrcRef.current = '';
+        video.removeAttribute('src');
+      }
     }
-  }, [activeVideo?.src, currentTime, isPlaying, activeVideo?.start]);
+  }, [activeVideo?.src, currentTime, isPlaying, masterVolume, activeVideo?.volume, activeVideo?.muted, activeVideo?.start]);
 
   // Calculate container aspect ratio dimensions
   const getAspectRatioDimensions = () => {
@@ -410,11 +427,11 @@ export const VideoPlayerCanvas: React.FC = () => {
       {/* Main Video Viewport: Real native HTML5 Video layer + High-Fidelity Canvas Overlay */}
       <div className="relative w-full flex items-center justify-center p-2 bg-zinc-950/90 overflow-hidden">
         <div className={`relative ${getAspectRatioDimensions()} w-full flex items-center justify-center bg-black rounded-lg overflow-hidden border border-zinc-800/80 shadow-2xl`}>
-          {/* 1. Real Native HTML5 Video Element - Plays live video smoothly with hardware acceleration */}
+          {/* 1. Real Native HTML5 Video Element - Plays live video smoothly with hardware acceleration and audible audio */}
           <video
             ref={videoRef}
             playsInline
-            muted
+            muted={masterVolume === 0 || !!activeVideo?.muted}
             loop
             className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
               isVideoLoaded ? 'opacity-100' : 'opacity-0'
@@ -452,10 +469,39 @@ export const VideoPlayerCanvas: React.FC = () => {
             LUT: {colorGrading.lut.replace('-', ' ').toUpperCase()}
           </div>
 
-          {/* Live Video Indicator Badge */}
-          <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-zinc-900/85 backdrop-blur-md px-2 py-0.5 rounded text-[10px] text-emerald-400 border border-emerald-800/60 font-mono z-20">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-            <span>LIVE VIDEO</span>
+          {/* Top Right Badges: Sound status & Live Video */}
+          <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
+            {/* Audio Audible Indicator */}
+            <button
+              onClick={e => {
+                e.stopPropagation();
+                setMasterVolume(masterVolume === 0 ? 0.85 : 0);
+              }}
+              className={`flex items-center gap-1 backdrop-blur-md px-2 py-0.5 rounded text-[10px] font-mono border transition ${
+                masterVolume > 0 && !activeVideo?.muted
+                  ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/70 hover:bg-emerald-900'
+                  : 'bg-red-950/80 text-red-300 border-red-800/70 hover:bg-red-900'
+              }`}
+              title="Click to toggle Sound"
+            >
+              {masterVolume > 0 && !activeVideo?.muted ? (
+                <>
+                  <Volume2 className="w-3 h-3 text-emerald-400" />
+                  <span>SOUND: {Math.round(masterVolume * 100)}%</span>
+                </>
+              ) : (
+                <>
+                  <VolumeX className="w-3 h-3 text-red-400" />
+                  <span>MUTED</span>
+                </>
+              )}
+            </button>
+
+            {/* Live Video Indicator */}
+            <div className="flex items-center gap-1.5 bg-zinc-900/85 backdrop-blur-md px-2 py-0.5 rounded text-[10px] text-emerald-400 border border-emerald-800/60 font-mono">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+              <span>LIVE VIDEO</span>
+            </div>
           </div>
         </div>
       </div>

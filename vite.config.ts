@@ -12,6 +12,8 @@ const resolveEntryPlugin: Plugin = {
   name: 'resolve-entry-plugin',
   resolveId(id) {
     if (
+      id.endsWith('main.tsx') ||
+      id.endsWith('main.ts') ||
       id === '/src/main.tsx' ||
       id === './src/main.tsx' ||
       id === 'src/main.tsx' ||
@@ -36,9 +38,11 @@ export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss(), resolveEntryPlugin],
     resolve: {
-      alias: {
-        '@': path.resolve(__dirname, '.'),
-      },
+      alias: [
+        { find: /^@\/(.*)/, replacement: path.resolve(__dirname, 'src/$1') },
+        { find: '@', replacement: path.resolve(__dirname, 'src') },
+        { find: '@root', replacement: path.resolve(__dirname, '.') },
+      ],
     },
     build: {
       target: 'esnext',

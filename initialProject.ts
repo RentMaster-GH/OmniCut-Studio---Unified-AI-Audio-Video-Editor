@@ -110,7 +110,7 @@ export const INITIAL_CLIPS: TimelineClip[] = [
     muted: false,
     color: '#2563EB',
     visualTag: 'cyberpunk',
-    src: 'https://test-videos.co.uk/vids/sintel/mp4/h264/720/Sintel_720_10s_1MB.mp4',
+    src: 'https://vjs.zencdn.net/v/oceans.mp4',
     effects: DEFAULT_COLOR_GRADING,
     text: 'STOP SCROLLING: THE FUTURE OF VIDEO CREATION IS HERE',
   },

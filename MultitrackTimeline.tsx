@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { useProject } from "./ProjectContext";
+import { useProject } from '../../context/ProjectContext';
 import {
   MousePointer,
   Scissors,
@@ -19,8 +19,9 @@ import {
   Music,
   Video,
   FileText,
+  Upload,
 } from 'lucide-react';
-import { TimelineClip } from "./types";
+import { TimelineClip } from '../../types';
 
 export const MultitrackTimeline: React.FC = () => {
   const {
@@ -41,6 +42,7 @@ export const MultitrackTimeline: React.FC = () => {
     deleteClip,
     moveClip,
     trimClip,
+    setShowUploadModal,
     toggleTrackMute,
     toggleTrackSolo,
     toggleTrackLock,
@@ -212,6 +214,16 @@ export const MultitrackTimeline: React.FC = () => {
               <span className="hidden sm:inline text-[11px]">Delete</span>
             </button>
           )}
+
+          {/* Import Media & Documents button */}
+          <button
+            onClick={() => setShowUploadModal(true)}
+            title="Import Video, Audio, Documents & Subtitles"
+            className="p-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 text-blue-300 hover:text-white flex items-center gap-1 transition"
+          >
+            <Upload className="w-3.5 h-3.5 text-blue-400" />
+            <span className="hidden sm:inline text-[11px] font-semibold">Import Media</span>
+          </button>
         </div>
 
         {/* Timeline Zoom Controls */}

@@ -22,9 +22,9 @@ import {
   INITIAL_ANALYTICS,
   DEFAULT_CAPTION_STYLE,
   DEFAULT_COLOR_GRADING,
-} from './initialProject';
-import { audioEngine } from './audioEngine';
-import { matchVideoForPrompt } from './videoLibrary';
+} from '../utils/initialProject';
+import { audioEngine } from '../utils/audioEngine';
+import { matchVideoForPrompt } from '../utils/videoLibrary';
 
 interface ProjectContextType {
   currentTime: number;
@@ -56,6 +56,7 @@ interface ProjectContextType {
   toggleTrackLock: (trackId: string) => void;
   setTrackVolume: (trackId: string, volume: number) => void;
   transcript: TranscriptWord[];
+  setTranscript: React.Dispatch<React.SetStateAction<TranscriptWord[]>>;
   removeFillerWords: () => void;
   deleteTranscriptWord: (wordId: string) => void;
   overdubTranscriptWord: (wordId: string, newWord: string) => Promise<void>;
@@ -97,6 +98,10 @@ interface ProjectContextType {
   setActiveTab: (tab: 'editor' | 'invideo_ai' | 'audio_mixer' | 'analytics' | 'collab') => void;
   showExportModal: boolean;
   setShowExportModal: (show: boolean) => void;
+  showUploadModal: boolean;
+  setShowUploadModal: (show: boolean) => void;
+  showShortcutsModal: boolean;
+  setShowShortcutsModal: (show: boolean) => void;
   showSecurityModal: boolean;
   setShowSecurityModal: (show: boolean) => void;
   theme: 'dark' | 'oled' | 'light';
@@ -151,6 +156,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [cloudSyncStatus, setCloudSyncStatus] = useState<'synced' | 'syncing' | 'offline'>('synced');
   const [activeTab, setActiveTab] = useState<'editor' | 'invideo_ai' | 'audio_mixer' | 'analytics' | 'collab'>('editor');
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showShortcutsModal, setShowShortcutsModal] = useState(false);
   const [showSecurityModal, setShowSecurityModal] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'oled' | 'light'>('dark');
 
@@ -173,15 +180,20 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const loop = (now: number) => {
       const delta = (now - lastTimeRef.current) / 1000;
       lastTimeRef.current = now;
+      let finished = false;
       setCurrentTime(prev => {
         const next = prev + delta;
         if (next >= duration) {
-          setIsPlaying(false);
-          audioEngine.stopAmbientPlayback();
+          finished = true;
           return 0;
         }
         return next;
       });
+      if (finished) {
+        setIsPlaying(false);
+        audioEngine.stopAmbientPlayback();
+        return;
+      }
       animationFrameRef.current = requestAnimationFrame(loop);
     };
     animationFrameRef.current = requestAnimationFrame(loop);
@@ -245,6 +257,64 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const deleteClip = useCallback((id: string) => {
     setClips(p => p.filter(c => c.id !== id));
     setSelectedClipId(p => (p === id ? null : p));
+  }, []);
+
+  // Global Pro Editor Keyboard Shortcuts with stable refs
+  const selectedClipIdRef = useRef(selectedClipId);
+  selectedClipIdRef.current = selectedClipId;
+  const togglePlayRef = useRef(togglePlay);
+  togglePlayRef.current = togglePlay;
+  const stepFrameRef = useRef(stepFrame);
+  stepFrameRef.current = stepFrame;
+  const splitClipAtPlayheadRef = useRef(splitClipAtPlayhead);
+  splitClipAtPlayheadRef.current = splitClipAtPlayhead;
+  const deleteClipRef = useRef(deleteClip);
+  deleteClipRef.current = deleteClip;
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput =
+        activeEl &&
+        (activeEl.tagName === 'INPUT' ||
+          activeEl.tagName === 'TEXTAREA' ||
+          (activeEl as HTMLElement).isContentEditable);
+      if (isInput) return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlayRef.current();
+      } else if (e.key === 'j' || e.key === 'J') {
+        e.preventDefault();
+        stepFrameRef.current(-1);
+      } else if (e.key === 'l' || e.key === 'L') {
+        e.preventDefault();
+        stepFrameRef.current(1);
+      } else if (e.key === 'v' || e.key === 'V') {
+        setActiveTool('select');
+      } else if (e.key === 'c' || e.key === 'C') {
+        setActiveTool('razor');
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        splitClipAtPlayheadRef.current();
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedClipIdRef.current) {
+          e.preventDefault();
+          deleteClipRef.current(selectedClipIdRef.current);
+        }
+      } else if (e.key === 'm' || e.key === 'M') {
+        setMasterVolumeState(prev => (prev === 0 ? 0.85 : 0));
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'u' || e.key === 'U')) {
+        e.preventDefault();
+        setShowUploadModal(true);
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'e' || e.key === 'E')) {
+        e.preventDefault();
+        setShowExportModal(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const updateClip = useCallback((id: string, u: Partial<TimelineClip>) => {
@@ -604,6 +674,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         toggleTrackLock,
         setTrackVolume,
         transcript,
+        setTranscript,
         removeFillerWords,
         deleteTranscriptWord,
         overdubTranscriptWord,
@@ -645,6 +716,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setActiveTab,
         showExportModal,
         setShowExportModal,
+        showUploadModal,
+        setShowUploadModal,
+        showShortcutsModal,
+        setShowShortcutsModal,
         showSecurityModal,
         setShowSecurityModal,
         theme,

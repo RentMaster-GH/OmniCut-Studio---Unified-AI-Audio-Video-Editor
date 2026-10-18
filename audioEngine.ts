@@ -142,7 +142,7 @@ class AudioEngine {
           osc.type = idx === 0 ? 'triangle' : 'sine';
           osc.frequency.setValueAtTime(freq, this.ctx!.currentTime);
 
-          const volume = this.isStudioSoundEnabled ? 0.025 : 0.04;
+          const volume = this.isStudioSoundEnabled ? 0.09 : 0.14;
           gain.gain.setValueAtTime(0.0001, this.ctx!.currentTime);
           gain.gain.linearRampToValueAtTime(volume, this.ctx!.currentTime + 0.4);
           gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx!.currentTime + 2.8);
