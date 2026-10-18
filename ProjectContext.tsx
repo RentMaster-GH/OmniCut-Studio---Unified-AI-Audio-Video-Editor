@@ -27,113 +27,58 @@ import { audioEngine } from "./audioEngine";
 import { matchVideoForPrompt } from "./videoLibrary";
 
 interface ProjectContextType {
-  currentTime: number;
-  duration: number;
-  isPlaying: boolean;
-  play: () => void;
-  pause: () => void;
-  togglePlay: () => void;
-  seek: (seconds: number) => void;
-  stepFrame: (frames: number) => void;
-  tracks: TimelineTrack[];
-  clips: TimelineClip[];
-  activeTool: 'select' | 'razor' | 'slip';
-  setActiveTool: (tool: 'select' | 'razor' | 'slip') => void;
-  snapping: boolean;
-  setSnapping: (enabled: boolean) => void;
-  zoom: number;
-  setZoom: React.Dispatch<React.SetStateAction<number>>;
-  selectedClipId: string | null;
-  setSelectedClipId: (id: string | null) => void;
-  splitClipAtPlayhead: (clipId?: string) => void;
-  deleteClip: (clipId: string) => void;
+  currentTime: number; duration: number; isPlaying: boolean;
+  play: () => void; pause: () => void; togglePlay: () => void;
+  seek: (seconds: number) => void; stepFrame: (frames: number) => void;
+  tracks: TimelineTrack[]; clips: TimelineClip[];
+  activeTool: 'select' | 'razor' | 'slip'; setActiveTool: (tool: 'select' | 'razor' | 'slip') => void;
+  snapping: boolean; setSnapping: (enabled: boolean) => void;
+  zoom: number; setZoom: React.Dispatch<React.SetStateAction<number>>;
+  selectedClipId: string | null; setSelectedClipId: (id: string | null) => void;
+  splitClipAtPlayhead: (clipId?: string) => void; deleteClip: (clipId: string) => void;
   updateClip: (clipId: string, updates: Partial<TimelineClip>) => void;
   moveClip: (clipId: string, newStart: number, newTrackId?: string) => void;
   trimClip: (clipId: string, deltaStart: number, deltaDuration: number) => void;
   addClip: (clip: TimelineClip) => void;
-  toggleTrackMute: (trackId: string) => void;
-  toggleTrackSolo: (trackId: string) => void;
-  toggleTrackLock: (trackId: string) => void;
-  setTrackVolume: (trackId: string, volume: number) => void;
-  transcript: TranscriptWord[];
-  setTranscript: React.Dispatch<React.SetStateAction<TranscriptWord[]>>;
-  removeFillerWords: () => void;
-  deleteTranscriptWord: (wordId: string) => void;
-  overdubTranscriptWord: (wordId: string, newWord: string) => Promise<void>;
-  generateTranscriptFromClips: () => Promise<void>;
-  aspectRatio: AspectRatio;
-  setAspectRatio: (ratio: AspectRatio) => void;
-  showSafeMargins: boolean;
-  setShowSafeMargins: (show: boolean) => void;
-  captionStyle: CaptionStyle;
-  setCaptionStyle: React.Dispatch<React.SetStateAction<CaptionStyle>>;
+  toggleTrackMute: (trackId: string) => void; toggleTrackSolo: (trackId: string) => void; toggleTrackLock: (trackId: string) => void; setTrackVolume: (trackId: string, volume: number) => void;
+  transcript: TranscriptWord[]; setTranscript: React.Dispatch<React.SetStateAction<TranscriptWord[]>>;
+  removeFillerWords: () => void; deleteTranscriptWord: (wordId: string) => void;
+  overdubTranscriptWord: (wordId: string, newWord: string) => Promise<void>; generateTranscriptFromClips: () => Promise<void>;
+  aspectRatio: AspectRatio; setAspectRatio: (ratio: AspectRatio) => void;
+  showSafeMargins: boolean; setShowSafeMargins: (show: boolean) => void;
+  captionStyle: CaptionStyle; setCaptionStyle: React.Dispatch<React.SetStateAction<CaptionStyle>>;
   generateAIVideo: (prompt: string, tone?: string, format?: string, mode?: string, image?: string | null) => Promise<any>;
   generateLongFormDocumentary: (masterPrompt: string, tone: string, format: string) => Promise<any>;
-  isAIGenerating: boolean;
-  colorGrading: ColorGrading;
-  setColorGrading: React.Dispatch<React.SetStateAction<ColorGrading>>;
-  audioChannels: AudioMixerChannel[];
-  updateAudioChannel: (trackId: string, updates: Partial<AudioMixerChannel>) => void;
-  isStudioSoundActive: boolean;
-  toggleStudioSound: () => void;
-  masterVolume: number;
-  setMasterVolume: (vol: number) => void;
-  collaborators: Collaborator[];
-  comments: ProjectComment[];
-  addComment: (text: string, timestamp?: number) => void;
-  resolveComment: (commentId: string) => void;
-  versions: ProjectVersion[];
-  restoreVersion: (versionId: string) => void;
-  createVersionSnapshot: (label: string, summary?: string) => void;
-  userRole: 'Owner' | 'Lead Producer' | 'Editor' | 'Viewer';
-  setUserRole: (role: 'Owner' | 'Lead Producer' | 'Editor' | 'Viewer') => void;
-  analytics: ProjectAnalytics;
-  isBiometricLocked: boolean;
-  verifyBiometric: () => Promise<boolean>;
-  lockWorkspace: () => void;
-  isEndToEndEncrypted: boolean;
-  encryptionFingerprint: string;
-  cloudSyncStatus: 'synced' | 'syncing' | 'offline';
-  syncNow: () => void;
-  activeTab: 'editor' | 'invideo_ai' | 'audio_mixer' | 'analytics' | 'collab';
-  setActiveTab: (tab: 'editor' | 'invideo_ai' | 'audio_mixer' | 'analytics' | 'collab') => void;
-  showExportModal: boolean;
-  setShowExportModal: (show: boolean) => void;
-  showUploadModal: boolean;
-  setShowUploadModal: (show: boolean) => void;
-  showShortcutsModal: boolean;
-  setShowShortcutsModal: (show: boolean) => void;
-  showSecurityModal: boolean;
-  setShowSecurityModal: (show: boolean) => void;
-  theme: 'dark' | 'oled' | 'light';
-  setTheme: (t: 'dark' | 'oled' | 'light') => void;
+  isAIGenerating: boolean; colorGrading: ColorGrading; setColorGrading: React.Dispatch<React.SetStateAction<ColorGrading>>;
+  audioChannels: AudioMixerChannel[]; updateAudioChannel: (trackId: string, updates: Partial<AudioMixerChannel>) => void;
+  isStudioSoundActive: boolean; toggleStudioSound: () => void; masterVolume: number; setMasterVolume: (vol: number) => void;
+  collaborators: Collaborator[]; comments: ProjectComment[]; addComment: (text: string, timestamp?: number) => void; resolveComment: (commentId: string) => void;
+  versions: ProjectVersion[]; restoreVersion: (versionId: string) => void; createVersionSnapshot: (label: string, summary?: string) => void;
+  userRole: 'Owner' | 'Lead Producer' | 'Editor' | 'Viewer'; setUserRole: (role: 'Owner' | 'Lead Producer' | 'Editor' | 'Viewer') => void;
+  analytics: ProjectAnalytics; isBiometricLocked: boolean; verifyBiometric: () => Promise<boolean>; lockWorkspace: () => void;
+  isEndToEndEncrypted: boolean; encryptionFingerprint: string; cloudSyncStatus: 'synced' | 'syncing' | 'offline'; syncNow: () => void;
+  activeTab: 'editor' | 'invideo_ai' | 'audio_mixer' | 'analytics' | 'collab'; setActiveTab: (tab: 'editor' | 'invideo_ai' | 'audio_mixer' | 'analytics' | 'collab') => void;
+  showExportModal: boolean; setShowExportModal: (show: boolean) => void; showUploadModal: boolean; setShowUploadModal: (show: boolean) => void;
+  showShortcutsModal: boolean; setShowShortcutsModal: (show: boolean) => void; showSecurityModal: boolean; setShowSecurityModal: (show: boolean) => void;
+  theme: 'dark' | 'oled' | 'light'; setTheme: (t: 'dark' | 'oled' | 'light') => void;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
-function hashPrompt(str: string): number {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
-  return Math.abs(h) % 999999;
-}
+function hashPrompt(str: string): number { let h = 0; for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0; return Math.abs(h) % 999999; }
 function parseDurationFromPrompt(prompt: string): number {
   const lower = prompt.toLowerCase();
   if (lower.includes('1 hour') || lower.includes('60 min') || lower.includes('one hour')) return 3600;
-  if (lower.includes('30 min')) return 1800;
-  if (lower.includes('10 min')) return 600;
-  if (lower.includes('5 min')) return 300;
-  if (lower.includes('2 min')) return 120;
-  return 20;
+  if (lower.includes('30 min')) return 1800; if (lower.includes('10 min')) return 600;
+  if (lower.includes('5 min')) return 300; if (lower.includes('2 min')) return 120; return 20;
 }
 async function tryGenerateRealVideo(prompt: string, durationSec: number): Promise<string | null> {
   const endpoints = ['http://localhost:8000/generate', 'https://api.omnicut.local/generate'];
   for (const url of endpoints) {
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 1500);
+      const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 1500);
       const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, duration: durationSec }), signal: controller.signal });
-      clearTimeout(timeout);
-      if (res.ok) { const blob = await res.blob(); return URL.createObjectURL(blob); }
+      clearTimeout(timeout); if (res.ok) { const blob = await res.blob(); return URL.createObjectURL(blob); }
     } catch {}
   }
   return null;
@@ -144,6 +89,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isPlaying, setIsPlaying] = useState(false);
   const animationFrameRef = useRef<number | null>(null);
   const lastTimeRef = useRef(0);
+  const pollIntervalRef = useRef<any>(null);
   const [tracks, setTracks] = useState<TimelineTrack[]>(INITIAL_TRACKS);
   const [clips, setClips] = useState<TimelineClip[]>(INITIAL_CLIPS);
   const [activeTool, setActiveTool] = useState<'select' | 'razor' | 'slip'>('select');
@@ -194,6 +140,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return () => { if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current); audioEngine.stopAmbientPlayback(); };
   }, [isPlaying, duration]);
 
+  useEffect(() => { return () => { if (pollIntervalRef.current) clearInterval(pollIntervalRef.current); }; }, []);
+
   const setMasterVolume = useCallback((vol: number) => { setMasterVolumeState(vol); audioEngine.setMasterVolume(vol); }, []);
   const play = useCallback(() => { audioEngine.resume(); if (currentTime >= duration) setCurrentTime(0); setIsPlaying(true); }, [currentTime, duration]);
   const pause = useCallback(() => { setIsPlaying(false); audioEngine.stopAmbientPlayback(); }, []);
@@ -208,13 +156,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setClips(p => p.filter(c => c.id !== clipToSplit.id).concat([first, second])); setSelectedClipId(second.id); audioEngine.playTimelineTick(520, 0.08, 'triangle');
   }, [clips, currentTime]);
   const deleteClip = useCallback((id: string) => { setClips(p => p.filter(c => c.id !== id)); setSelectedClipId(p => (p === id ? null : p)); }, []);
-
   const selectedClipIdRef = useRef(selectedClipId); selectedClipIdRef.current = selectedClipId;
   const togglePlayRef = useRef(togglePlay); togglePlayRef.current = togglePlay;
   const stepFrameRef = useRef(stepFrame); stepFrameRef.current = stepFrame;
   const splitClipAtPlayheadRef = useRef(splitClipAtPlayhead); splitClipAtPlayheadRef.current = splitClipAtPlayhead;
   const deleteClipRef = useRef(deleteClip); deleteClipRef.current = deleteClip;
-
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeEl = document.activeElement; const isInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || (activeEl as HTMLElement).isContentEditable); if (isInput) return;
@@ -252,7 +198,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const isImageMode = mode === 'image-to-video' && !!image;
     const cleanSubject = prompt.replace(/^(create a|generate a|make a|video of|video about|clip of|show me|a)\s+/i, '').slice(0, 48);
     const totalDuration = parseDurationFromPrompt(prompt); const isLongMovie = totalDuration >= 300; const sceneDuration = isLongMovie ? 30 : 6; const maxScenesForUI = isLongMovie ? 120 : 4;
-    const defaultScenes = isImageMode ? Array.from({ length: 3 }, (_, i) => ({ title: `Scene ${i + 1}`, duration: sceneDuration, narration: `Animating ${cleanSubject}`, visualPrompt: prompt, overlayText: `✨ ${cleanSubject.toUpperCase()}` })) : scriptData?.scenes?.length ? scriptData.scenes : Array.from({ length: isLongMovie ? 6 : 3 }, (_, i) => ({ title: `Scene ${i + 1}`, duration: sceneDuration, narration: `Chapter ${i + 1} of ${cleanSubject}`, visualPrompt: `${prompt}, cinematic, photorealistic, 8k, highly detailed, scene ${i + 1}`, overlayText: `CHAPTER ${i + 1}` }));
+    const defaultScenes = isImageMode ? Array.from({ length: 3 }, (_, i) => ({ title: `Scene ${i + 1}`, duration: sceneDuration, narration: `Animating ${cleanSubject}`, visualPrompt: prompt, overlayText: `✨ ${cleanSubject.toUpperCase()}` })) : scriptData?.scenes?.length ? scriptData.scenes : Array.from({ length: isLongMovie ? 6 : 3 }, (_, i) => ({ title: `Scene ${i + 1}`, duration: sceneDuration, narration: `Chapter ${i + 1} of ${cleanSubject}`, visualPrompt: `${prompt}, cinematic, 8k, highly detailed, scene ${i + 1}`, overlayText: `CHAPTER ${i + 1}` }));
     const rawScenes = (scriptData?.scenes?.length ? scriptData.scenes : defaultScenes).slice(0, maxScenesForUI);
     const newClips: TimelineClip[] = []; const newTranscript: TranscriptWord[] = []; let currentTimelineStart = 0; let wordIdCounter = 1;
     for (let idx = 0; idx < rawScenes.length; idx++) {
@@ -272,36 +218,158 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return { title: scriptData?.projectTitle || cleanSubject, projectTitle: scriptData?.projectTitle || cleanSubject, duration: currentTimelineStart };
   }, [masterVolume]);
 
+  // === INTEGRATED LIVE-REACTIVE LONG FORM ===
   const generateLongFormDocumentary = useCallback(async (masterPrompt: string, tone: string, format: string) => {
     setIsAIGenerating(true);
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+
     try {
+      const projectId = `project_${Date.now()}`;
+
+      // 1. Hit the Gemini Node to establish the multi-shot screenplay blocks
       let scenes: any[] = [];
       try {
-        const response = await fetch('/api/ai/segment-script', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ masterPrompt, tone, format }) });
-        if (response.ok) { const data = await response.json(); scenes = data.scenes || []; }
-      } catch {}
+        const scriptResponse = await fetch('/api/ai/segment-script', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ masterPrompt, tone, format }),
+        });
+        if (scriptResponse.ok) {
+          const data = await scriptResponse.json();
+          scenes = data.scenes || [];
+        }
+      } catch (e) { console.warn('Segmenter offline, using fallback splitter', e); }
+
       if (!scenes || scenes.length === 0) {
         const sentences = masterPrompt.split(/[.!\n]+/).filter(Boolean);
         const chunkSize = Math.ceil(sentences.length / 6) || 1;
-        for (let i = 0; i < sentences.length; i += chunkSize) { const chunk = sentences.slice(i, i + chunkSize).join('. '); if (chunk.trim()) scenes.push({ sceneIndex: scenes.length, narrationText: chunk, visualPrompt: chunk, duration: 30 }); }
+        for (let i = 0; i < sentences.length; i += chunkSize) {
+          const chunk = sentences.slice(i, i + chunkSize).join('. ');
+          if (chunk.trim()) scenes.push({ sceneIndex: scenes.length, narrationText: chunk, visualPrompt: chunk, duration: 30 });
+        }
         if (scenes.length === 0) scenes = [{ sceneIndex: 0, narrationText: masterPrompt, visualPrompt: masterPrompt, duration: 20 }];
       }
-      let aggregatedTimelinePointer = 0;
-      const newClips: TimelineClip[] = []; const newTranscript: TranscriptWord[] = []; let wordIdCounter = 1;
-      for (let s = 0; s < scenes.length; s++) {
-        const scene = scenes[s]; const startOffset = aggregatedTimelinePointer; const dur = Math.max(5, Number(scene.duration) || 30); aggregatedTimelinePointer += dur;
-        const matchedVideo = matchVideoForPrompt(scene.visualPrompt || masterPrompt); const seed = hashPrompt((scene.visualPrompt || masterPrompt) + s); const encoded = encodeURIComponent(`${scene.visualPrompt || masterPrompt}, documentary, photorealistic, 8k, cinematic lighting, ultra realistic`); const lifeLikeImage = `https://image.pollinations.ai/prompt/${encoded}?width=1280&height=720&seed=${seed}&nologo=true&model=flux`; const realVideoUrl = await tryGenerateRealVideo(scene.visualPrompt || masterPrompt, dur);
-        newClips.push({ id: `clip-ai-${Date.now()}-${scene.sceneIndex ?? s}`, trackId: 'track-v1', title: `Doc Scene ${s + 1}`, type: 'video', start: startOffset, duration: dur, volume: 1, speed: 1, muted: false, color: matchedVideo.color, visualTag: scene.visualPrompt, src: realVideoUrl || '', imageSrc: realVideoUrl ? undefined : lifeLikeImage, prompt: scene.visualPrompt, text: scene.narrationText?.slice(0, 60) || '', url: realVideoUrl || lifeLikeImage } as any);
-        newClips.push({ id: `clip-overlay-${Date.now()}-${s}`, trackId: 'track-v2', title: `Lower Third ${s + 1}`, type: 'overlay', start: startOffset + 0.5, duration: dur - 1, volume: 0.8, speed: 1, muted: false, color: '#EC4899' } as any);
-        newClips.push({ id: `clip-cap-${Date.now()}-${s}`, trackId: 'track-captions', title: `Caption ${s + 1}`, type: 'caption', start: startOffset + 0.2, duration: dur - 0.4, volume: 1, speed: 1, muted: false, color: '#F59E0B', text: scene.narrationText?.slice(0, 80) || '' } as any);
-        newClips.push({ id: `clip-vo-${Date.now()}-${s}`, trackId: 'track-a1', title: `VO ${s + 1}`, type: 'audio', start: startOffset, duration: dur, volume: 0.95, speed: 1, muted: false, color: '#10B981' } as any);
-        const words = (scene.narrationText || '').split(/\s+/).filter(Boolean); const wd = dur / Math.max(1, words.length);
-        words.forEach((w: string, wi: number) => { newTranscript.push({ id: `w-doc-${wordIdCounter++}`, word: w, start: startOffset + wi * wd, end: startOffset + wi * wd + wd * 0.9, isFiller: false, confidence: 0.99 }); });
-      }
-      newClips.push({ id: `clip-music-${Date.now()}`, trackId: 'track-a2', title: `Score: ${tone.toUpperCase()}`, type: 'audio', start: 0, duration: aggregatedTimelinePointer, volume: 0.35, speed: 1, muted: false, color: '#8B5CF6' } as any);
-      setClips(newClips); setTranscript(newTranscript); if (newClips[0]) setSelectedClipId(newClips[0].id); setCurrentTime(0); setActiveTab('editor'); setIsPlaying(true); audioEngine.resume();
-      return { title: masterPrompt.slice(0, 42), duration: aggregatedTimelinePointer, scenes: newClips.length };
-    } catch (err) { console.error('Long form project pipeline deployment failed:', err); throw err; } finally { setIsAIGenerating(false); }
+
+      let accumulatedPointer = 0;
+      const placeholderClips: TimelineClip[] = [];
+      const initialTranscript: TranscriptWord[] = [];
+      let wordIdCounter = 1;
+
+      // Map initial processing placeholders onto master layout
+      scenes.forEach((scene: any, s: number) => {
+        const start = accumulatedPointer;
+        const dur = Math.max(5, Number(scene.duration) || 30);
+        accumulatedPointer += dur;
+        const matched = matchVideoForPrompt(scene.visualPrompt || masterPrompt);
+
+        // V1 placeholder with status: processing
+        placeholderClips.push({
+          id: `scene-${projectId}-${scene.sceneIndex ?? s}`,
+          trackId: 'track-v1',
+          title: `Processing Scene ${s + 1}`,
+          type: 'video',
+          start,
+          duration: dur,
+          volume: 1, speed: 1, muted: false,
+          color: '#27272a',
+          visualTag: scene.visualPrompt,
+          text: scene.narrationText?.slice(0, 60) || '',
+          prompt: scene.visualPrompt,
+          src: '',
+          imageSrc: undefined,
+          url: '',
+          status: 'processing',
+        } as any);
+
+        placeholderClips.push({ id: `scene-${projectId}-overlay-${s}`, trackId: 'track-v2', title: `Lower Third ${s+1}`, type: 'overlay', start: start+0.5, duration: dur-1, volume: 0.8, speed: 1, muted: false, color: '#EC4899', status: 'processing' } as any);
+        placeholderClips.push({ id: `scene-${projectId}-cap-${s}`, trackId: 'track-captions', title: `Caption ${s+1}`, type: 'caption', start: start+0.2, duration: dur-0.4, volume: 1, speed: 1, muted: false, color: '#F59E0B', text: scene.narrationText?.slice(0,80) || '', status: 'processing' } as any);
+        placeholderClips.push({ id: `scene-${projectId}-vo-${s}`, trackId: 'track-a1', title: `VO ${s+1}`, type: 'audio', start, duration: dur, volume: 0.95, speed: 1, muted: false, color: '#10B981', status: 'processing' } as any);
+
+        const words = (scene.narrationText || '').split(/\s+/).filter(Boolean);
+        const wd = dur / Math.max(1, words.length);
+        words.forEach((w: string, wi: number) => {
+          initialTranscript.push({ id: `w-doc-${projectId}-${wordIdCounter++}`, word: w, start: start + wi*wd, end: start + wi*wd + wd*0.9, isFiller: false, confidence: 0.99 });
+        });
+      });
+
+      placeholderClips.push({ id: `scene-${projectId}-music`, trackId: 'track-a2', title: `Score: ${tone.toUpperCase()}`, type: 'audio', start: 0, duration: accumulatedPointer, volume: 0.35, speed: 1, muted: false, color: '#8B5CF6' } as any);
+
+      // Load structure instantly so timeline displays structural placeholder cards immediately
+      setClips(placeholderClips);
+      setTranscript(initialTranscript);
+      if (placeholderClips[0]) setSelectedClipId(placeholderClips[0].id);
+      setCurrentTime(0);
+      setActiveTab('editor');
+      setIsPlaying(false);
+
+      // 2. Dispatch collection to background Batch Trigger
+      fetch('/api/ai/batch-generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId, scenes, format, tone }),
+      }).catch(e => console.warn('Batch trigger failed, will use client fallback generation', e));
+
+      // 3. Polling routine to update clips live as Replicate completes segments
+      pollIntervalRef.current = setInterval(async () => {
+        try {
+          const checkRes = await fetch(`/api/project/status?projectId=${projectId}`);
+          if (checkRes.ok) {
+            const { updatedClips, isEntireProjectComplete } = await checkRes.json();
+            
+            if (updatedClips && Array.isArray(updatedClips) && updatedClips.length > 0) {
+              // UPDATE_TIMELINE_CLIPS_LIVE equivalent - merge live URLs
+              setClips(prev => {
+                return prev.map(existingClip => {
+                  const updated = updatedClips.find((u: any) => existingClip.id === u.id || existingClip.id.includes(`-${u.sceneIndex ?? ''}`) && existingClip.trackId === 'track-v1');
+                  if (updated && updated.url) {
+                    return { ...existingClip, src: updated.url, url: updated.url, imageSrc: updated.imageSrc || updated.url, status: 'complete', color: matchVideoForPrompt(updated.prompt || '').color, title: `Scene ${updated.sceneIndex + 1} ✓` } as any;
+                  }
+                  // Also match by sceneIndex for V1 track
+                  const byIndex = updatedClips.find((u: any) => existingClip.trackId === 'track-v1' && existingClip.start === u.start);
+                  if (byIndex?.url) {
+                    return { ...existingClip, src: byIndex.url, url: byIndex.url, status: 'complete', color: '#10B981' } as any;
+                  }
+                  return existingClip;
+                });
+              });
+            }
+
+            if (isEntireProjectComplete) {
+              clearInterval(pollIntervalRef.current);
+              pollIntervalRef.current = null;
+              console.log('Project complete, polling stopped');
+            }
+          } else {
+            // Fallback client-side generation if server polling not available - progressive upgrade
+            setClips(prev => prev.map((c, idx) => {
+              if ((c as any).status === 'processing' && c.trackId === 'track-v1') {
+                const sIdx = Math.floor(idx/4);
+                const scene = scenes[sIdx];
+                if (!scene) return c;
+                const seed = hashPrompt((scene.visualPrompt || masterPrompt) + sIdx);
+                const encoded = encodeURIComponent(`${scene.visualPrompt}, documentary, photorealistic, 8k, cinematic`);
+                const fallbackUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1280&height=720&seed=${seed}&nologo=true&model=flux`;
+                return { ...c, imageSrc: fallbackUrl, url: fallbackUrl, status: 'complete', color: '#10B981', title: `Scene ${sIdx+1} ✓` } as any;
+              }
+              if ((c as any).status === 'processing') return { ...c, status: 'complete' } as any;
+              return c;
+            }));
+            // Stop after one fallback pass
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+          }
+        } catch (err) {
+          console.warn('Poll check failed', err);
+        }
+      }, 6000);
+
+      return { projectId, duration: accumulatedPointer, title: masterPrompt.slice(0,42) };
+    } catch (err) {
+      console.error('Long-form batch automation routing failure:', err);
+      throw err;
+    } finally {
+      setIsAIGenerating(false);
+    }
   }, []);
 
   const updateAudioChannel = useCallback((id: string, u: Partial<AudioMixerChannel>) => { setAudioChannels(p => p.map(c => (c.trackId === id ? { ...c, ...u } : c))); if (u.volume !== undefined) audioEngine.setTrackVolume(id, u.volume); if (u.eq) audioEngine.updateEq(id, u.eq); if (u.studioSoundActive !== undefined) audioEngine.setStudioSound(u.studioSoundActive); }, []);
@@ -314,34 +382,21 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const lockWorkspace = useCallback(() => { setIsBiometricLocked(true); setIsPlaying(false); }, []);
   const syncNow = useCallback(() => { setCloudSyncStatus('syncing'); setTimeout(() => setCloudSyncStatus('synced'), 1200); }, []);
 
-  // Fine-Tuned Audio-Ducking Automation Loop
   useEffect(() => {
     if (!isPlaying) return;
-    const isDialogueActiveNow = clips.some(
-      (clip) =>
-        (clip.trackId === 'track-v1' || clip.trackId === 'track-a1') &&
-        currentTime >= clip.start &&
-        currentTime <= clip.start + clip.duration &&
-        (clip as any).text &&
-        (clip as any).text.trim().length > 0
-    );
-    const musicChannel = audioChannels.find((c) => c.trackId === 'track-a2');
+    const isDialogueActiveNow = clips.some((clip: any) => (clip.trackId === 'track-v1' || clip.trackId === 'track-a1') && currentTime >= clip.start && currentTime <= clip.start + clip.duration && clip.text && clip.text.trim().length > 0);
+    const musicChannel = audioChannels.find(c => c.trackId === 'track-a2') as any;
     if (!musicChannel) return;
-    const baseVol = (musicChannel as any).userPreferredVolume ?? 0.4;
+    const baseVol = musicChannel.userPreferredVolume ?? 0.4;
     const targetDuckedVolume = isDialogueActiveNow ? baseVol * 0.15 : baseVol;
-
-    if ((musicChannel as any).userPreferredVolume === undefined) {
-      setAudioChannels((prev) => prev.map((c) => (c.trackId === 'track-a2' ? ({ ...c, userPreferredVolume: baseVol } as any) : c)));
-    }
+    if (musicChannel.userPreferredVolume === undefined) setAudioChannels(prev => prev.map(c => c.trackId === 'track-a2' ? ({ ...c, userPreferredVolume: baseVol } as any) : c));
     audioEngine.setTrackVolume('track-a2', targetDuckedVolume);
   }, [currentTime, isPlaying, clips, audioChannels]);
 
   return (
-    <ProjectContext.Provider
-      value={{
-        currentTime, duration, isPlaying, play, pause, togglePlay, seek, stepFrame, tracks, clips, activeTool, setActiveTool, snapping, setSnapping, zoom, setZoom, selectedClipId, setSelectedClipId, splitClipAtPlayhead, deleteClip, updateClip, moveClip, trimClip, addClip, toggleTrackMute, toggleTrackSolo, toggleTrackLock, setTrackVolume, transcript, setTranscript, removeFillerWords, deleteTranscriptWord, overdubTranscriptWord, generateTranscriptFromClips, aspectRatio, setAspectRatio, showSafeMargins, setShowSafeMargins, captionStyle, setCaptionStyle, generateAIVideo, generateLongFormDocumentary, isAIGenerating, colorGrading, setColorGrading, audioChannels, updateAudioChannel, isStudioSoundActive, toggleStudioSound, masterVolume, setMasterVolume, collaborators, comments, addComment, resolveComment, versions, restoreVersion, createVersionSnapshot, userRole, setUserRole, analytics, isBiometricLocked, verifyBiometric, lockWorkspace, isEndToEndEncrypted, encryptionFingerprint, cloudSyncStatus, syncNow, activeTab, setActiveTab, showExportModal, setShowExportModal, showUploadModal, setShowUploadModal, showShortcutsModal, setShowShortcutsModal, showSecurityModal, setShowSecurityModal, theme, setTheme,
-      }}
-    >
+    <ProjectContext.Provider value={{
+      currentTime, duration, isPlaying, play, pause, togglePlay, seek, stepFrame, tracks, clips, activeTool, setActiveTool, snapping, setSnapping, zoom, setZoom, selectedClipId, setSelectedClipId, splitClipAtPlayhead, deleteClip, updateClip, moveClip, trimClip, addClip, toggleTrackMute, toggleTrackSolo, toggleTrackLock, setTrackVolume, transcript, setTranscript, removeFillerWords, deleteTranscriptWord, overdubTranscriptWord, generateTranscriptFromClips, aspectRatio, setAspectRatio, showSafeMargins, setShowSafeMargins, captionStyle, setCaptionStyle, generateAIVideo, generateLongFormDocumentary, isAIGenerating, colorGrading, setColorGrading, audioChannels, updateAudioChannel, isStudioSoundActive, toggleStudioSound, masterVolume, setMasterVolume, collaborators, comments, addComment, resolveComment, versions, restoreVersion, createVersionSnapshot, userRole, setUserRole, analytics, isBiometricLocked, verifyBiometric, lockWorkspace, isEndToEndEncrypted, encryptionFingerprint, cloudSyncStatus, syncNow, activeTab, setActiveTab, showExportModal, setShowExportModal, showUploadModal, setShowUploadModal, showShortcutsModal, setShowShortcutsModal, showSecurityModal, setShowSecurityModal, theme, setTheme,
+    }}>
       {children}
     </ProjectContext.Provider>
   );
@@ -355,9 +410,5 @@ export const useProject = () => {
 
 export const useProjectActions = () => {
   const project = useProject();
-  return {
-    generateLongFormDocumentary: project.generateLongFormDocumentary,
-    generateAIVideo: project.generateAIVideo,
-    isAIGenerating: project.isAIGenerating,
-  };
+  return { generateLongFormDocumentary: project.generateLongFormDocumentary, generateAIVideo: project.generateAIVideo, isAIGenerating: project.isAIGenerating };
 };
