@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useProject } from '../../context/ProjectContext';
+import { useProject } from "./ProjectContext";
 import {
   Sparkles,
   Wand2,
@@ -12,7 +12,7 @@ import {
   Compass,
   Zap,
 } from 'lucide-react';
-import { audioEngine } from '../../utils/audioEngine';
+import { audioEngine } from "./audioEngine";
 
 export const AIStudioGenerator: React.FC = () => {
   const { generateAIVideo, isAIGenerating, setActiveTab } = useProject();
