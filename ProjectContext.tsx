@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import { createClient } from '@supabase/supabase-js';
 import {
   AspectRatio,
   TimelineClip,
@@ -25,6 +26,11 @@ import {
 } from "./initialProject";
 import { audioEngine } from "./audioEngine";
 import { matchVideoForPrompt } from "./videoLibrary";
+
+// Initializing the Supabase client connector using your active environment parameters
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
+const supabaseClient = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null as any;
 
 interface ProjectContextType {
   currentTime: number; duration: number; isPlaying: boolean;
@@ -140,6 +146,88 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return () => { if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current); audioEngine.stopAmbientPlayback(); };
   }, [isPlaying, duration]);
 
+  // === SUBSCRIBER LIFECYCLE CHANNEL - LIVE STRUCTURAL MODIFICATIONS ===
+  useEffect(() => {
+    if (!supabaseClient) {
+      console.warn('Supabase client not configured, skipping realtime channel');
+      return;
+    }
+    console.log('🔌 Initializing OmniCut Live Sync Hub: Connecting Supabase Realtime Channel...');
+
+    const timelineSyncChannel = supabaseClient
+      .channel('public-timeline-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'marketplace_apps'
+        },
+        (payload: any) => {
+          const updatedRow = payload.new;
+          console.log(`⚡ Realtime Event Received: Clip Row ${updatedRow.id} status is now -> ${updatedRow.status}`);
+
+          if (updatedRow.status === 'ready' && updatedRow.src_url) {
+            try {
+              // Parse original scene index from asset name: Project_${projectId}_Scene_${scene.sceneIndex}.mp4
+              const parts = updatedRow.name ? updatedRow.name.split('_') : [];
+              const projectIdPart = parts[1] || '';
+              const sceneIdxPart = parts[3] ? parts[3].split('.')[0] : '0';
+              const sceneIdx = parseInt(sceneIdxPart, 10) || 0;
+
+              const updatedClipPayload = [
+                {
+                  id: `scene-project_${projectIdPart}-${sceneIdx}`,
+                  status: 'ready',
+                  url: updatedRow.src_url,
+                  sceneIndex: sceneIdx,
+                  prompt: updatedRow.prompt || '',
+                }
+              ];
+
+              // Fire live update - replaces your dispatch({ type: 'UPDATE_TIMELINE_CLIPS_LIVE' })
+              setClips(prev => {
+                return prev.map(existingClip => {
+                  // Match by exact id pattern or by project+scene index
+                  const shouldUpdate = existingClip.id === updatedClipPayload[0].id ||
+                    (existingClip.id.includes(`-${sceneIdx}`) && existingClip.trackId === 'track-v1' && existingClip.id.startsWith(`scene-project_`)) ||
+                    (projectIdPart && existingClip.id.includes(projectIdPart));
+
+                  if (shouldUpdate && existingClip.trackId === 'track-v1') {
+                    return {
+                      ...existingClip,
+                      src: updatedRow.src_url,
+                      url: updatedRow.src_url,
+                      imageSrc: undefined,
+                      status: 'ready',
+                      color: '#10B981',
+                      title: `Scene ${sceneIdx + 1} ✓`,
+                    } as any;
+                  }
+                  return existingClip;
+                });
+              });
+
+              console.log(`✅ Timeline clip ${updatedClipPayload[0].id} upgraded to production URL`);
+            } catch (e) {
+              console.warn('Failed to parse realtime payload', e, updatedRow);
+            }
+          }
+        }
+      )
+      .subscribe((status: string) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Realtime WebSocket connection active. Timeline sync listening...');
+        }
+      });
+
+    return () => {
+      console.log(' Shutting down live channels...');
+      if (supabaseClient) supabaseClient.removeChannel(timelineSyncChannel);
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    };
+  }, []);
+
   useEffect(() => { return () => { if (pollIntervalRef.current) clearInterval(pollIntervalRef.current); }; }, []);
 
   const setMasterVolume = useCallback((vol: number) => { setMasterVolumeState(vol); audioEngine.setMasterVolume(vol); }, []);
@@ -177,7 +265,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
     window.addEventListener('keydown', handleKeyDown); return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
-
   const updateClip = useCallback((id: string, u: Partial<TimelineClip>) => setClips(p => p.map(c => (c.id === id ? { ...c, ...u } : c))), []);
   const moveClip = useCallback((id: string, newStart: number, newTrackId?: string) => { let finalStart = Math.max(0, newStart); if (snapping && Math.abs(finalStart - currentTime) < 0.25) finalStart = currentTime; setClips(p => p.map(c => (c.id === id ? { ...c, start: finalStart, trackId: newTrackId || c.trackId } : c))); }, [snapping, currentTime]);
   const trimClip = useCallback((id: string, ds: number, dd: number) => setClips(p => p.map(c => (c.id === id ? { ...c, start: Math.max(0, c.start + ds), duration: Math.max(0.2, c.duration + dd) } : c))), []);
@@ -218,158 +305,54 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return { title: scriptData?.projectTitle || cleanSubject, projectTitle: scriptData?.projectTitle || cleanSubject, duration: currentTimelineStart };
   }, [masterVolume]);
 
-  // === INTEGRATED LIVE-REACTIVE LONG FORM ===
   const generateLongFormDocumentary = useCallback(async (masterPrompt: string, tone: string, format: string) => {
     setIsAIGenerating(true);
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-
     try {
       const projectId = `project_${Date.now()}`;
-
-      // 1. Hit the Gemini Node to establish the multi-shot screenplay blocks
       let scenes: any[] = [];
       try {
-        const scriptResponse = await fetch('/api/ai/segment-script', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ masterPrompt, tone, format }),
-        });
-        if (scriptResponse.ok) {
-          const data = await scriptResponse.json();
-          scenes = data.scenes || [];
-        }
-      } catch (e) { console.warn('Segmenter offline, using fallback splitter', e); }
-
+        const scriptResponse = await fetch('/api/ai/segment-script', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ masterPrompt, tone, format }) });
+        if (scriptResponse.ok) { const data = await scriptResponse.json(); scenes = data.scenes || []; }
+      } catch {}
       if (!scenes || scenes.length === 0) {
         const sentences = masterPrompt.split(/[.!\n]+/).filter(Boolean);
         const chunkSize = Math.ceil(sentences.length / 6) || 1;
-        for (let i = 0; i < sentences.length; i += chunkSize) {
-          const chunk = sentences.slice(i, i + chunkSize).join('. ');
-          if (chunk.trim()) scenes.push({ sceneIndex: scenes.length, narrationText: chunk, visualPrompt: chunk, duration: 30 });
-        }
+        for (let i = 0; i < sentences.length; i += chunkSize) { const chunk = sentences.slice(i, i + chunkSize).join('. '); if (chunk.trim()) scenes.push({ sceneIndex: scenes.length, narrationText: chunk, visualPrompt: chunk, duration: 30 }); }
         if (scenes.length === 0) scenes = [{ sceneIndex: 0, narrationText: masterPrompt, visualPrompt: masterPrompt, duration: 20 }];
       }
-
       let accumulatedPointer = 0;
-      const placeholderClips: TimelineClip[] = [];
-      const initialTranscript: TranscriptWord[] = [];
-      let wordIdCounter = 1;
-
-      // Map initial processing placeholders onto master layout
+      const placeholderClips: TimelineClip[] = []; const initialTranscript: TranscriptWord[] = []; let wordIdCounter = 1;
       scenes.forEach((scene: any, s: number) => {
-        const start = accumulatedPointer;
-        const dur = Math.max(5, Number(scene.duration) || 30);
-        accumulatedPointer += dur;
-        const matched = matchVideoForPrompt(scene.visualPrompt || masterPrompt);
-
-        // V1 placeholder with status: processing
-        placeholderClips.push({
-          id: `scene-${projectId}-${scene.sceneIndex ?? s}`,
-          trackId: 'track-v1',
-          title: `Processing Scene ${s + 1}`,
-          type: 'video',
-          start,
-          duration: dur,
-          volume: 1, speed: 1, muted: false,
-          color: '#27272a',
-          visualTag: scene.visualPrompt,
-          text: scene.narrationText?.slice(0, 60) || '',
-          prompt: scene.visualPrompt,
-          src: '',
-          imageSrc: undefined,
-          url: '',
-          status: 'processing',
-        } as any);
-
+        const start = accumulatedPointer; const dur = Math.max(5, Number(scene.duration) || 30); accumulatedPointer += dur; const matched = matchVideoForPrompt(scene.visualPrompt || masterPrompt);
+        placeholderClips.push({ id: `scene-${projectId}-${scene.sceneIndex ?? s}`, trackId: 'track-v1', title: `Processing Scene ${s + 1}`, type: 'video', start, duration: dur, volume: 1, speed: 1, muted: false, color: '#27272a', visualTag: scene.visualPrompt, text: scene.narrationText?.slice(0, 60) || '', prompt: scene.visualPrompt, src: '', imageSrc: undefined, url: '', status: 'processing' } as any);
         placeholderClips.push({ id: `scene-${projectId}-overlay-${s}`, trackId: 'track-v2', title: `Lower Third ${s+1}`, type: 'overlay', start: start+0.5, duration: dur-1, volume: 0.8, speed: 1, muted: false, color: '#EC4899', status: 'processing' } as any);
         placeholderClips.push({ id: `scene-${projectId}-cap-${s}`, trackId: 'track-captions', title: `Caption ${s+1}`, type: 'caption', start: start+0.2, duration: dur-0.4, volume: 1, speed: 1, muted: false, color: '#F59E0B', text: scene.narrationText?.slice(0,80) || '', status: 'processing' } as any);
         placeholderClips.push({ id: `scene-${projectId}-vo-${s}`, trackId: 'track-a1', title: `VO ${s+1}`, type: 'audio', start, duration: dur, volume: 0.95, speed: 1, muted: false, color: '#10B981', status: 'processing' } as any);
-
-        const words = (scene.narrationText || '').split(/\s+/).filter(Boolean);
-        const wd = dur / Math.max(1, words.length);
-        words.forEach((w: string, wi: number) => {
-          initialTranscript.push({ id: `w-doc-${projectId}-${wordIdCounter++}`, word: w, start: start + wi*wd, end: start + wi*wd + wd*0.9, isFiller: false, confidence: 0.99 });
-        });
+        const words = (scene.narrationText || '').split(/\s+/).filter(Boolean); const wd = dur / Math.max(1, words.length);
+        words.forEach((w: string, wi: number) => { initialTranscript.push({ id: `w-doc-${projectId}-${wordIdCounter++}`, word: w, start: start + wi*wd, end: start + wi*wd + wd*0.9, isFiller: false, confidence: 0.99 }); });
       });
-
       placeholderClips.push({ id: `scene-${projectId}-music`, trackId: 'track-a2', title: `Score: ${tone.toUpperCase()}`, type: 'audio', start: 0, duration: accumulatedPointer, volume: 0.35, speed: 1, muted: false, color: '#8B5CF6' } as any);
-
-      // Load structure instantly so timeline displays structural placeholder cards immediately
-      setClips(placeholderClips);
-      setTranscript(initialTranscript);
-      if (placeholderClips[0]) setSelectedClipId(placeholderClips[0].id);
-      setCurrentTime(0);
-      setActiveTab('editor');
-      setIsPlaying(false);
-
-      // 2. Dispatch collection to background Batch Trigger
-      fetch('/api/ai/batch-generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId, scenes, format, tone }),
-      }).catch(e => console.warn('Batch trigger failed, will use client fallback generation', e));
-
-      // 3. Polling routine to update clips live as Replicate completes segments
+      setClips(placeholderClips); setTranscript(initialTranscript); if (placeholderClips[0]) setSelectedClipId(placeholderClips[0].id); setCurrentTime(0); setActiveTab('editor'); setIsPlaying(false);
+      fetch('/api/ai/batch-generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ projectId, scenes, format, tone }) }).catch(e => console.warn('Batch trigger failed', e));
       pollIntervalRef.current = setInterval(async () => {
         try {
           const checkRes = await fetch(`/api/project/status?projectId=${projectId}`);
           if (checkRes.ok) {
             const { updatedClips, isEntireProjectComplete } = await checkRes.json();
-            
             if (updatedClips && Array.isArray(updatedClips) && updatedClips.length > 0) {
-              // UPDATE_TIMELINE_CLIPS_LIVE equivalent - merge live URLs
-              setClips(prev => {
-                return prev.map(existingClip => {
-                  const updated = updatedClips.find((u: any) => existingClip.id === u.id || existingClip.id.includes(`-${u.sceneIndex ?? ''}`) && existingClip.trackId === 'track-v1');
-                  if (updated && updated.url) {
-                    return { ...existingClip, src: updated.url, url: updated.url, imageSrc: updated.imageSrc || updated.url, status: 'complete', color: matchVideoForPrompt(updated.prompt || '').color, title: `Scene ${updated.sceneIndex + 1} ✓` } as any;
-                  }
-                  // Also match by sceneIndex for V1 track
-                  const byIndex = updatedClips.find((u: any) => existingClip.trackId === 'track-v1' && existingClip.start === u.start);
-                  if (byIndex?.url) {
-                    return { ...existingClip, src: byIndex.url, url: byIndex.url, status: 'complete', color: '#10B981' } as any;
-                  }
-                  return existingClip;
-                });
-              });
+              setClips(prev => prev.map(existingClip => {
+                const updated = updatedClips.find((u: any) => existingClip.id === u.id);
+                if (updated && updated.url) return { ...existingClip, src: updated.url, url: updated.url, imageSrc: updated.imageSrc || updated.url, status: 'ready', color: '#10B981', title: `Scene ${updated.sceneIndex + 1} ✓` } as any;
+                return existingClip;
+              }));
             }
-
-            if (isEntireProjectComplete) {
-              clearInterval(pollIntervalRef.current);
-              pollIntervalRef.current = null;
-              console.log('Project complete, polling stopped');
-            }
-          } else {
-            // Fallback client-side generation if server polling not available - progressive upgrade
-            setClips(prev => prev.map((c, idx) => {
-              if ((c as any).status === 'processing' && c.trackId === 'track-v1') {
-                const sIdx = Math.floor(idx/4);
-                const scene = scenes[sIdx];
-                if (!scene) return c;
-                const seed = hashPrompt((scene.visualPrompt || masterPrompt) + sIdx);
-                const encoded = encodeURIComponent(`${scene.visualPrompt}, documentary, photorealistic, 8k, cinematic`);
-                const fallbackUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1280&height=720&seed=${seed}&nologo=true&model=flux`;
-                return { ...c, imageSrc: fallbackUrl, url: fallbackUrl, status: 'complete', color: '#10B981', title: `Scene ${sIdx+1} ✓` } as any;
-              }
-              if ((c as any).status === 'processing') return { ...c, status: 'complete' } as any;
-              return c;
-            }));
-            // Stop after one fallback pass
-            clearInterval(pollIntervalRef.current);
-            pollIntervalRef.current = null;
+            if (isEntireProjectComplete) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null; }
           }
-        } catch (err) {
-          console.warn('Poll check failed', err);
-        }
+        } catch {}
       }, 6000);
-
       return { projectId, duration: accumulatedPointer, title: masterPrompt.slice(0,42) };
-    } catch (err) {
-      console.error('Long-form batch automation routing failure:', err);
-      throw err;
-    } finally {
-      setIsAIGenerating(false);
-    }
+    } catch (err) { console.error('Long-form batch automation routing failure:', err); throw err; } finally { setIsAIGenerating(false); }
   }, []);
 
   const updateAudioChannel = useCallback((id: string, u: Partial<AudioMixerChannel>) => { setAudioChannels(p => p.map(c => (c.trackId === id ? { ...c, ...u } : c))); if (u.volume !== undefined) audioEngine.setTrackVolume(id, u.volume); if (u.eq) audioEngine.updateEq(id, u.eq); if (u.studioSoundActive !== undefined) audioEngine.setStudioSound(u.studioSoundActive); }, []);
