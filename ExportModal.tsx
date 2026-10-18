@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useProject } from '../../context/ProjectContext';
+import { useProject } from "./ProjectContext";
 import {
   X,
   Download,
@@ -18,8 +18,8 @@ import {
   FileText,
   Music,
 } from 'lucide-react';
-import { EXPORT_PRESETS } from '../../utils/initialProject';
-import { ExportPreset } from '../../types';
+import { EXPORT_PRESETS } from "./initialProject";
+import { ExportPreset } from "./types";
 import {
   generateValidWavBlob,
   generateSrtContent,
