@@ -11,7 +11,7 @@ import {
   CaptionStyle,
   ColorGrading,
   AudioMixerChannel,
-} from '../types';
+} from "./types";
 import {
   INITIAL_CLIPS,
   INITIAL_TRACKS,
@@ -22,9 +22,9 @@ import {
   INITIAL_ANALYTICS,
   DEFAULT_CAPTION_STYLE,
   DEFAULT_COLOR_GRADING,
-} from '../utils/initialProject';
-import { audioEngine } from '../utils/audioEngine';
-import { matchVideoForPrompt } from '../utils/videoLibrary';
+} from "./initialProject";
+import { audioEngine } from "./audioEngine";
+import { matchVideoForPrompt } from "./videoLibrary";
 
 interface ProjectContextType {
   currentTime: number;
