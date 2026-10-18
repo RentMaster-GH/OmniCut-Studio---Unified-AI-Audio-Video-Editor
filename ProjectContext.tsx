@@ -26,8 +26,6 @@ import {
 import { audioEngine } from "./audioEngine";
 import { matchVideoForPrompt } from "./videoLibrary";
 
-// Don't import supabase at top level for Vite build
-
 interface ProjectContextType {
   currentTime: number; duration: number; isPlaying: boolean;
   play: () => void; pause: () => void; togglePlay: () => void;
@@ -42,6 +40,9 @@ interface ProjectContextType {
   moveClip: (clipId: string, newStart: number, newTrackId?: string) => void;
   trimClip: (clipId: string, deltaStart: number, deltaDuration: number) => void;
   addClip: (clip: TimelineClip) => void;
+  // NEW: B-Roll Overlay Injector
+  injectBRollOverlay: (timestamp: number, videoUrl: string, title?: string, duration?: number) => string;
+  dispatch: (action: any) => void;
   toggleTrackMute: (trackId: string) => void; toggleTrackSolo: (trackId: string) => void; toggleTrackLock: (trackId: string) => void; setTrackVolume: (trackId: string, volume: number) => void;
   transcript: TranscriptWord[]; setTranscript: React.Dispatch<React.SetStateAction<TranscriptWord[]>>;
   removeFillerWords: () => void; deleteTranscriptWord: (wordId: string) => void;
@@ -129,6 +130,57 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const duration = Math.max(30, ...clips.map(c => c.start + c.duration));
 
+  // === NEW: Timeline Insertion Reducer Action ===
+  const injectBRollOverlay = useCallback((timestamp: number, videoUrl: string, title = 'AI B-Roll Hook Modifier', dur = 3.0) => {
+    const newId = `broll-${Date.now()}`;
+    const newClip: TimelineClip = {
+      id: newId,
+      trackId: 'track-v2', // Places on top of base track channel
+      start: Math.max(0, timestamp),
+      duration: dur,
+      title,
+      url: videoUrl,
+      src: videoUrl,
+      status: 'ready',
+      type: 'overlay',
+      volume: 1,
+      speed: 1,
+      muted: false,
+      color: '#EC4899',
+    } as any;
+
+    setClips(prev => [...prev, newClip]);
+    setSelectedClipId(newId);
+    console.log(`🎬 INJECT_B_ROLL_OVERLAY: ${newId} at ${timestamp}s -> ${videoUrl}`);
+    return newId;
+  }, []);
+
+  const dispatch = useCallback((action: any) => {
+    switch (action.type) {
+      case 'INJECT_B_ROLL_OVERLAY':
+        // Safely insert a new clip block directly on track V2
+        injectBRollOverlay(
+          action.payload.timestamp,
+          action.payload.videoUrl,
+          action.payload.title || 'AI B-Roll Hook Modifier',
+          action.payload.duration || 3.0
+        );
+        break;
+      case 'UPDATE_TIMELINE_CLIPS_LIVE':
+        // Legacy live update from your first subscriber
+        if (Array.isArray(action.payload)) {
+          setClips(prev => prev.map(c => {
+            const upd = action.payload.find((u: any) => u.id === c.id || c.id.includes(u.id));
+            if (upd?.url) return { ...c, src: upd.url, url: upd.url, status: 'ready', color: '#10B981' } as any;
+            return c;
+          }));
+        }
+        break;
+      default:
+        console.warn('Unknown dispatch action', action.type);
+    }
+  }, [injectBRollOverlay]);
+
   useEffect(() => { audioEngine.init(); audioEngine.setMasterVolume(masterVolume); audioEngine.setStudioSound(isStudioSoundActive); }, []);
   useEffect(() => {
     if (!isPlaying) { if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current); audioEngine.stopAmbientPlayback(); return; }
@@ -143,56 +195,65 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return () => { if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current); audioEngine.stopAmbientPlayback(); };
   }, [isPlaying, duration]);
 
-  // === FIXED SUBSCRIBER LIFECYCLE - CLIENT ONLY, DYNAMIC IMPORT ===
+  // === Supabase Realtime with B-Roll Overlay Logic ===
   useEffect(() => {
     let mounted = true;
     (async () => {
       const url = (import.meta as any).env?.VITE_SUPABASE_URL || (typeof process !== 'undefined' ? (process as any).env?.NEXT_PUBLIC_SUPABASE_URL : '') || '';
       const key = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || (typeof process !== 'undefined' ? (process as any).env?.NEXT_PUBLIC_SUPABASE_ANON_KEY : '') || '';
-      if (!url || !key) {
-        console.log('Supabase not configured, skipping realtime');
-        return;
-      }
+      if (!url || !key) return;
       try {
         const { createClient } = await import('@supabase/supabase-js');
         if (!mounted) return;
         const client = createClient(url, key);
-        console.log('🔌 Initializing OmniCut Live Sync Hub...');
+        console.log('🔌 Initializing OmniCut Live Sync Hub: Connecting Supabase Realtime Channel...');
         const channel = client
           .channel('public-timeline-updates')
           .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'marketplace_apps' }, (payload: any) => {
             const updatedRow = payload.new;
-            console.log(`⚡ Realtime: ${updatedRow.id} -> ${updatedRow.status}`);
+            console.log(`⚡ Realtime Event: ${updatedRow.id} -> ${updatedRow.status}`);
             if (updatedRow.status === 'ready' && updatedRow.src_url) {
-              const parts = updatedRow.name ? updatedRow.name.split('_') : [];
-              const sceneIdx = parts[3] ? parseInt(parts[3].split('.')[0], 10) : 0;
-              setClips(prev => prev.map(c => {
-                if (c.trackId === 'track-v1' && (c as any).status === 'processing') {
-                  const match = c.id.includes(`-${sceneIdx}`) || c.id.endsWith(`-${sceneIdx}`);
-                  if (match || c.id.includes(parts[1] || '___never___')) {
-                    return { ...c, src: updatedRow.src_url, url: updatedRow.src_url, status: 'ready', color: '#10B981' } as any;
+              // Check if this is a B-Roll hook (has timestamp in metadata) or a base scene
+              const isBRoll = updatedRow.name?.includes('broll') || updatedRow.metadata?.type === 'broll_overlay' || updatedRow.type === 'broll';
+              const timestamp = updatedRow.metadata?.timestamp ?? updatedRow.timestamp ?? updatedRow.drop_timestamp ?? currentTime;
+
+              if (isBRoll) {
+                // NEW PATH: Insert as V2 overlay, keep narration underneath
+                dispatch({
+                  type: 'INJECT_B_ROLL_OVERLAY',
+                  payload: {
+                    timestamp: Number(timestamp) || 0,
+                    videoUrl: updatedRow.src_url,
+                    title: updatedRow.name || 'AI B-Roll Hook Modifier',
+                    duration: updatedRow.duration || 3.0
                   }
-                }
-                return c;
-              }));
+                });
+              } else {
+                // OLD PATH: Replace base scene placeholder
+                const parts = updatedRow.name ? updatedRow.name.split('_') : [];
+                const sceneIdx = parts[3] ? parseInt(parts[3].split('.')[0], 10) : 0;
+                setClips(prev => prev.map(c => {
+                  if (c.trackId === 'track-v1' && (c as any).status === 'processing') {
+                    const match = c.id.includes(`-${sceneIdx}`) || c.id.endsWith(`-${sceneIdx}`);
+                    if (match || c.id.includes(parts[1] || '___never___')) {
+                      return { ...c, src: updatedRow.src_url, url: updatedRow.src_url, status: 'ready', color: '#10B981' } as any;
+                    }
+                  }
+                  return c;
+                }));
+              }
             }
           })
-          .subscribe((status: string) => {
-            if (status === 'SUBSCRIBED') console.log('✅ Realtime active');
-          });
+          .subscribe((status: string) => { if (status === 'SUBSCRIBED') console.log('✅ Realtime WebSocket active. Timeline sync listening...'); });
         realtimeChannelRef.current = { client, channel };
-      } catch (e) {
-        console.warn('Supabase realtime init failed', e);
-      }
+      } catch (e) { console.warn('Realtime init failed', e); }
     })();
     return () => {
       mounted = false;
-      if (realtimeChannelRef.current) {
-        try { realtimeChannelRef.current.client.removeChannel(realtimeChannelRef.current.channel); } catch {}
-      }
+      if (realtimeChannelRef.current) { try { realtimeChannelRef.current.client.removeChannel(realtimeChannelRef.current.channel); } catch {} }
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     };
-  }, []);
+  }, [dispatch, currentTime]);
 
   const setMasterVolume = useCallback((vol: number) => { setMasterVolumeState(vol); audioEngine.setMasterVolume(vol); }, []);
   const play = useCallback(() => { audioEngine.resume(); if (currentTime >= duration) setCurrentTime(0); setIsPlaying(true); }, [currentTime, duration]);
@@ -342,7 +403,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   return (
     <ProjectContext.Provider value={{
-      currentTime, duration, isPlaying, play, pause, togglePlay, seek, stepFrame, tracks, clips, activeTool, setActiveTool, snapping, setSnapping, zoom, setZoom, selectedClipId, setSelectedClipId, splitClipAtPlayhead, deleteClip, updateClip, moveClip, trimClip, addClip, toggleTrackMute, toggleTrackSolo, toggleTrackLock, setTrackVolume, transcript, setTranscript, removeFillerWords, deleteTranscriptWord, overdubTranscriptWord, generateTranscriptFromClips, aspectRatio, setAspectRatio, showSafeMargins, setShowSafeMargins, captionStyle, setCaptionStyle, generateAIVideo, generateLongFormDocumentary, isAIGenerating, colorGrading, setColorGrading, audioChannels, updateAudioChannel, isStudioSoundActive, toggleStudioSound, masterVolume, setMasterVolume, collaborators, comments, addComment, resolveComment, versions, restoreVersion, createVersionSnapshot, userRole, setUserRole, analytics, isBiometricLocked, verifyBiometric, lockWorkspace, isEndToEndEncrypted, encryptionFingerprint, cloudSyncStatus, syncNow, activeTab, setActiveTab, showExportModal, setShowExportModal, showUploadModal, setShowUploadModal, showShortcutsModal, setShowShortcutsModal, showSecurityModal, setShowSecurityModal, theme, setTheme,
+      currentTime, duration, isPlaying, play, pause, togglePlay, seek, stepFrame, tracks, clips, activeTool, setActiveTool, snapping, setSnapping, zoom, setZoom, selectedClipId, setSelectedClipId, splitClipAtPlayhead, deleteClip, updateClip, moveClip, trimClip, addClip, injectBRollOverlay, dispatch, toggleTrackMute, toggleTrackSolo, toggleTrackLock, setTrackVolume, transcript, setTranscript, removeFillerWords, deleteTranscriptWord, overdubTranscriptWord, generateTranscriptFromClips, aspectRatio, setAspectRatio, showSafeMargins, setShowSafeMargins, captionStyle, setCaptionStyle, generateAIVideo, generateLongFormDocumentary, isAIGenerating, colorGrading, setColorGrading, audioChannels, updateAudioChannel, isStudioSoundActive, toggleStudioSound, masterVolume, setMasterVolume, collaborators, comments, addComment, resolveComment, versions, restoreVersion, createVersionSnapshot, userRole, setUserRole, analytics, isBiometricLocked, verifyBiometric, lockWorkspace, isEndToEndEncrypted, encryptionFingerprint, cloudSyncStatus, syncNow, activeTab, setActiveTab, showExportModal, setShowExportModal, showUploadModal, setShowUploadModal, showShortcutsModal, setShowShortcutsModal, showSecurityModal, setShowSecurityModal, theme, setTheme,
     }}>
       {children}
     </ProjectContext.Provider>
@@ -357,5 +418,5 @@ export const useProject = () => {
 
 export const useProjectActions = () => {
   const project = useProject();
-  return { generateLongFormDocumentary: project.generateLongFormDocumentary, generateAIVideo: project.generateAIVideo, isAIGenerating: project.isAIGenerating };
+  return { generateLongFormDocumentary: project.generateLongFormDocumentary, generateAIVideo: project.generateAIVideo, isAIGenerating: project.isAIGenerating, injectBRollOverlay: project.injectBRollOverlay, dispatch: project.dispatch };
 };
