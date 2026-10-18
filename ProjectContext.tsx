@@ -474,47 +474,17 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       let currentTimelineStart = 0;
       let wordIdCounter = 1;
 
-      for (let idx = 0; idx < Math.min(4, rawScenes.length); idx++) {
-  const sc: any = rawScenes[idx];
-  const sceneDuration = Math.max(3.5, Number(sc.duration) || 5.5);
-  
-  // FIX: Use REAL user prompt, not brollKeyword
-  const searchPrompt = prompt; // "pig eating" - fixes bird bug
-  let matchedVideo = matchVideoForPrompt(searchPrompt, idx);
+            for (let idx = 0; idx < Math.min(4, rawScenes.length); idx++) {
+        const sc: any = rawScenes[idx];
+        const sceneDuration = Math.max(3.5, Number(sc.duration) || 5.5);
+        
+        // SELF-SUFFICIENT: No fetching, no API, infinite prompts
+        const searchPrompt = sc.visualPrompt || prompt;
+        const matchedVideo = matchVideoForPrompt(searchPrompt);
 
-  // OPTIONAL: Try real API - now allowed because we're in async function with for loop
-  try {
-    const realRes = await fetch('/api/ai/fetch-real-video', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: searchPrompt })
-    });
-    if (realRes.ok) {
-      const realData = await realRes.json();
-      if (realData.originalVideo) {
-        matchedVideo = { ...matchedVideo, src: realData.originalVideo };
-      }
-    }
-  } catch (err) {
-    console.log('Using local video library', err);
-  }
-
-// Try to fetch REAL video from API if available (Coverr/Pixabay)
-try {
-  const realRes = await fetch('/api/ai/fetch-real-video', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt: searchPrompt })
-  });
-  if (realRes.ok) {
-    const realData = await realRes.json();
-    if (realData.originalVideo) {
-      matchedVideo.src = realData.originalVideo; // Override with REAL pig video
-    }
-  }
-} catch {}
-
-        const videoSrc = isImageMode ? image! : matchedVideo.src;
+        const videoSrc = isImageMode ? image! : matchedVideo.src; // will be '' for generative
+        const videoColor = isImageMode ? '#9333EA' : matchedVideo.color;
+        const visualTag = isImageMode ? 'image-to-video' : matchedVideo.visualTag;
         const videoColor = isImageMode ? '#9333EA' : matchedVideo.color;
         const visualTag = isImageMode ? 'image-to-video' : matchedVideo.visualTag;
 
