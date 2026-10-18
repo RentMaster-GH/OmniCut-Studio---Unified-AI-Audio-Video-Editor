@@ -25,7 +25,7 @@ import {
   generateSrtContent,
   generateVttContent,
   generateTranscriptDocument,
-} from "./utils/mediaExport";
+} from "./mediaExport";
 
 export const ExportModal: React.FC = () => {
   const { showExportModal, setShowExportModal, clips, duration, tracks, transcript } = useProject();
