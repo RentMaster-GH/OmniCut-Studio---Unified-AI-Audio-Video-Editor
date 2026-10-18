@@ -5,12 +5,16 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api"
+      "source": "/api/ai/generate-script",
+      "destination": "/api/ai/generate-script"
     },
     {
-      "source": "/api",
-      "destination": "/api"
+      "source": "/api/ai/generate-video",
+      "destination": "/api/ai/generate-video"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
     },
     {
       "source": "/(.*)",
