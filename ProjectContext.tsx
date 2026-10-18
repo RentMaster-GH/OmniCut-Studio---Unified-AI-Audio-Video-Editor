@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import {
   AspectRatio,
   TimelineClip,
@@ -27,10 +26,7 @@ import {
 import { audioEngine } from "./audioEngine";
 import { matchVideoForPrompt } from "./videoLibrary";
 
-// Initializing the Supabase client connector using your active environment parameters
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
-const supabaseClient = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null as any;
+// Don't import supabase at top level for Vite build
 
 interface ProjectContextType {
   currentTime: number; duration: number; isPlaying: boolean;
@@ -96,6 +92,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const animationFrameRef = useRef<number | null>(null);
   const lastTimeRef = useRef(0);
   const pollIntervalRef = useRef<any>(null);
+  const realtimeChannelRef = useRef<any>(null);
   const [tracks, setTracks] = useState<TimelineTrack[]>(INITIAL_TRACKS);
   const [clips, setClips] = useState<TimelineClip[]>(INITIAL_CLIPS);
   const [activeTool, setActiveTool] = useState<'select' | 'razor' | 'slip'>('select');
@@ -146,89 +143,56 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return () => { if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current); audioEngine.stopAmbientPlayback(); };
   }, [isPlaying, duration]);
 
-  // === SUBSCRIBER LIFECYCLE CHANNEL - LIVE STRUCTURAL MODIFICATIONS ===
+  // === FIXED SUBSCRIBER LIFECYCLE - CLIENT ONLY, DYNAMIC IMPORT ===
   useEffect(() => {
-    if (!supabaseClient) {
-      console.warn('Supabase client not configured, skipping realtime channel');
-      return;
-    }
-    console.log('🔌 Initializing OmniCut Live Sync Hub: Connecting Supabase Realtime Channel...');
-
-    const timelineSyncChannel = supabaseClient
-      .channel('public-timeline-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'marketplace_apps'
-        },
-        (payload: any) => {
-          const updatedRow = payload.new;
-          console.log(`⚡ Realtime Event Received: Clip Row ${updatedRow.id} status is now -> ${updatedRow.status}`);
-
-          if (updatedRow.status === 'ready' && updatedRow.src_url) {
-            try {
-              // Parse original scene index from asset name: Project_${projectId}_Scene_${scene.sceneIndex}.mp4
+    let mounted = true;
+    (async () => {
+      const url = (import.meta as any).env?.VITE_SUPABASE_URL || (typeof process !== 'undefined' ? (process as any).env?.NEXT_PUBLIC_SUPABASE_URL : '') || '';
+      const key = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || (typeof process !== 'undefined' ? (process as any).env?.NEXT_PUBLIC_SUPABASE_ANON_KEY : '') || '';
+      if (!url || !key) {
+        console.log('Supabase not configured, skipping realtime');
+        return;
+      }
+      try {
+        const { createClient } = await import('@supabase/supabase-js');
+        if (!mounted) return;
+        const client = createClient(url, key);
+        console.log('🔌 Initializing OmniCut Live Sync Hub...');
+        const channel = client
+          .channel('public-timeline-updates')
+          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'marketplace_apps' }, (payload: any) => {
+            const updatedRow = payload.new;
+            console.log(`⚡ Realtime: ${updatedRow.id} -> ${updatedRow.status}`);
+            if (updatedRow.status === 'ready' && updatedRow.src_url) {
               const parts = updatedRow.name ? updatedRow.name.split('_') : [];
-              const projectIdPart = parts[1] || '';
-              const sceneIdxPart = parts[3] ? parts[3].split('.')[0] : '0';
-              const sceneIdx = parseInt(sceneIdxPart, 10) || 0;
-
-              const updatedClipPayload = [
-                {
-                  id: `scene-project_${projectIdPart}-${sceneIdx}`,
-                  status: 'ready',
-                  url: updatedRow.src_url,
-                  sceneIndex: sceneIdx,
-                  prompt: updatedRow.prompt || '',
-                }
-              ];
-
-              // Fire live update - replaces your dispatch({ type: 'UPDATE_TIMELINE_CLIPS_LIVE' })
-              setClips(prev => {
-                return prev.map(existingClip => {
-                  // Match by exact id pattern or by project+scene index
-                  const shouldUpdate = existingClip.id === updatedClipPayload[0].id ||
-                    (existingClip.id.includes(`-${sceneIdx}`) && existingClip.trackId === 'track-v1' && existingClip.id.startsWith(`scene-project_`)) ||
-                    (projectIdPart && existingClip.id.includes(projectIdPart));
-
-                  if (shouldUpdate && existingClip.trackId === 'track-v1') {
-                    return {
-                      ...existingClip,
-                      src: updatedRow.src_url,
-                      url: updatedRow.src_url,
-                      imageSrc: undefined,
-                      status: 'ready',
-                      color: '#10B981',
-                      title: `Scene ${sceneIdx + 1} ✓`,
-                    } as any;
+              const sceneIdx = parts[3] ? parseInt(parts[3].split('.')[0], 10) : 0;
+              setClips(prev => prev.map(c => {
+                if (c.trackId === 'track-v1' && (c as any).status === 'processing') {
+                  const match = c.id.includes(`-${sceneIdx}`) || c.id.endsWith(`-${sceneIdx}`);
+                  if (match || c.id.includes(parts[1] || '___never___')) {
+                    return { ...c, src: updatedRow.src_url, url: updatedRow.src_url, status: 'ready', color: '#10B981' } as any;
                   }
-                  return existingClip;
-                });
-              });
-
-              console.log(`✅ Timeline clip ${updatedClipPayload[0].id} upgraded to production URL`);
-            } catch (e) {
-              console.warn('Failed to parse realtime payload', e, updatedRow);
+                }
+                return c;
+              }));
             }
-          }
-        }
-      )
-      .subscribe((status: string) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ Realtime WebSocket connection active. Timeline sync listening...');
-        }
-      });
-
+          })
+          .subscribe((status: string) => {
+            if (status === 'SUBSCRIBED') console.log('✅ Realtime active');
+          });
+        realtimeChannelRef.current = { client, channel };
+      } catch (e) {
+        console.warn('Supabase realtime init failed', e);
+      }
+    })();
     return () => {
-      console.log(' Shutting down live channels...');
-      if (supabaseClient) supabaseClient.removeChannel(timelineSyncChannel);
+      mounted = false;
+      if (realtimeChannelRef.current) {
+        try { realtimeChannelRef.current.client.removeChannel(realtimeChannelRef.current.channel); } catch {}
+      }
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     };
   }, []);
-
-  useEffect(() => { return () => { if (pollIntervalRef.current) clearInterval(pollIntervalRef.current); }; }, []);
 
   const setMasterVolume = useCallback((vol: number) => { setMasterVolumeState(vol); audioEngine.setMasterVolume(vol); }, []);
   const play = useCallback(() => { audioEngine.resume(); if (currentTime >= duration) setCurrentTime(0); setIsPlaying(true); }, [currentTime, duration]);
@@ -324,7 +288,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       let accumulatedPointer = 0;
       const placeholderClips: TimelineClip[] = []; const initialTranscript: TranscriptWord[] = []; let wordIdCounter = 1;
       scenes.forEach((scene: any, s: number) => {
-        const start = accumulatedPointer; const dur = Math.max(5, Number(scene.duration) || 30); accumulatedPointer += dur; const matched = matchVideoForPrompt(scene.visualPrompt || masterPrompt);
+        const start = accumulatedPointer; const dur = Math.max(5, Number(scene.duration) || 30); accumulatedPointer += dur;
         placeholderClips.push({ id: `scene-${projectId}-${scene.sceneIndex ?? s}`, trackId: 'track-v1', title: `Processing Scene ${s + 1}`, type: 'video', start, duration: dur, volume: 1, speed: 1, muted: false, color: '#27272a', visualTag: scene.visualPrompt, text: scene.narrationText?.slice(0, 60) || '', prompt: scene.visualPrompt, src: '', imageSrc: undefined, url: '', status: 'processing' } as any);
         placeholderClips.push({ id: `scene-${projectId}-overlay-${s}`, trackId: 'track-v2', title: `Lower Third ${s+1}`, type: 'overlay', start: start+0.5, duration: dur-1, volume: 0.8, speed: 1, muted: false, color: '#EC4899', status: 'processing' } as any);
         placeholderClips.push({ id: `scene-${projectId}-cap-${s}`, trackId: 'track-captions', title: `Caption ${s+1}`, type: 'caption', start: start+0.2, duration: dur-0.4, volume: 1, speed: 1, muted: false, color: '#F59E0B', text: scene.narrationText?.slice(0,80) || '', status: 'processing' } as any);
