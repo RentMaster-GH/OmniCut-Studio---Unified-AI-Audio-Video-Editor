@@ -16,7 +16,7 @@ export const VERIFIED_STOCK_VIDEOS: VideoAsset[] = [
   {
     id: 'vid-pig-eating',
     title: '🐖 Real Pig Eating & Feeding',
-    src: 'https://upload.wikimedia.org/wikipedia/commons/8/8b/Piglets_feeding.webm',
+    src: 'https://cdn.pixabay.com/video/2020/11/09/56160-478213711_large.mp4',
     category: 'animals',
     tags: ['pig', 'pigs', 'piglet', 'boar', 'swine', 'hog', 'pork', 'eating', 'feeding', 'farm', 'mud', 'sty', 'eat'],
     color: '#F472B6',
