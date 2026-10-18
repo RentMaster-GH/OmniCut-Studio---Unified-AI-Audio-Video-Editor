@@ -174,12 +174,11 @@ export const VideoPlayerCanvas: React.FC = () => {
       c => c.trackId === 'track-captions' && currentTime >= c.start && currentTime <= c.start + c.duration
     );
 
-    // 2. Base layer
-    if (isVideoLoaded && activeVideo?.src) {
-      // Clear canvas so the real native video renders through crystal clear!
+        // 2. Base layer
+    if (activeVideo?.src) {
+      // ALWAYS show real video if src exists - don't wait for isVideoLoaded
       ctx.clearRect(0, 0, width, height);
     } else {
-      // Draw live procedural generative animation depicting the prompt & scene
       drawLiveGenerativeScene(
         ctx,
         width,
@@ -445,7 +444,12 @@ export const VideoPlayerCanvas: React.FC = () => {
             }}
             onLoadedData={() => setIsVideoLoaded(true)}
             onPlaying={() => setIsVideoLoaded(true)}
-            onError={() => setIsVideoLoaded(false)}
+            onCanPlay={() => setIsVideoLoaded(true)}
+            onError={(e) => {
+              console.error('Video load failed:', activeVideo?.src, e);
+              // Don't block - still clear canvas so user sees error, not fake pasture
+              setIsVideoLoaded(true);
+            }}
           />
 
           {/* 2. Interactive High-Fidelity Canvas Viewport */}
