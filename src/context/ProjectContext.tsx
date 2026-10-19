@@ -28,7 +28,7 @@ import {
 } from "./initialProject";
 import { INITIAL_AVATARS } from "./avatarsData";
 import { audioEngine } from "./audioEngine";
-import { matchVideoForPrompt } from "./videoLibrary";
+import { matchVideoForPrompt } from "../utils/videoLibrary";
 
 interface ProjectContextType {
   currentTime: number;
