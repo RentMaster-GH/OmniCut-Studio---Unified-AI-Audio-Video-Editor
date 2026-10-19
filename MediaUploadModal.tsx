@@ -17,7 +17,7 @@ import {
   Music,
   FolderOpen,
 } from 'lucide-react';
-import { VERIFIED_STOCK_VIDEOS } from "./videoLibrary";
+import { VERIFIED_STOCK_VIDEOS } from "./src/utils/videoLibrary";
 
 export const MediaUploadModal: React.FC = () => {
   const {
