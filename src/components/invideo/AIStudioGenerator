@@ -418,36 +418,8 @@ export const AIStudioGenerator: React.FC = () => {
         )}
 
         {/* Global Settings Block */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 bg-zinc-900/40 p-3.5 rounded-xl border border-zinc-800">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[11px] font-semibold text-zinc-300">Target Duration:</label>
-            <select
-              value={durationPreset}
-              onChange={e => setDurationPreset(e.target.value)}
-              className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none"
-            >
-              <option value="30s">30 Seconds (Social / TikTok / Reel)</option>
-              <option value="2m">2 Minutes (Cinematic Scene / Essay)</option>
-              <option value="10m">10 Minutes (Deep Dive Video Essay)</option>
-              <option value="30m">30 Minutes (TV / Docu-Series Episode)</option>
-              <option value="60m">60 Minutes (1-Hour Movie / Documentary)</option>
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[11px] font-semibold text-zinc-300">Life-Like Fidelity:</label>
-            <select
-              value={realismStyle}
-              onChange={e => setRealismStyle(e.target.value)}
-              className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none"
-            >
-              <option value="Hyper-Photorealistic 8K Life-like">Hyper-Photorealistic 8K Life-like</option>
-              <option value="BBC / IMAX Nature Documentary Realism">BBC / IMAX Nature Documentary Realism</option>
-              <option value="Hollywood 35mm Master Film">Hollywood 35mm Master Film</option>
-              <option value="Cellular Micro-Texture Biological">Cellular Micro-Texture Biological</option>
-            </select>
-          </div>
-
+                {/* Global Settings Block */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-zinc-900/30 p-3 rounded-xl border border-zinc-800/80">
           <div className="flex flex-col gap-1.5">
             <label className="text-[11px] font-semibold text-zinc-300">Pacing & Tone:</label>
             <select
@@ -456,7 +428,7 @@ export const AIStudioGenerator: React.FC = () => {
               className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none"
             >
               <option value="engaging">Viral & High Energy (TikTok/Reels)</option>
-              <option value="cinematic">Cinematic & Dramatic (Movie / Doc)</option>
+              <option value="cinematic">Cinematic & Dramatic (YouTube 4K)</option>
               <option value="professional">Professional & Authoritative (B2B)</option>
               <option value="casual">Casual & Conversational (Podcast)</option>
             </select>
@@ -469,10 +441,9 @@ export const AIStudioGenerator: React.FC = () => {
               onChange={e => setFormat(e.target.value)}
               className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none"
             >
-              <option value="16:9">16:9 Landscape (YouTube & Cinema)</option>
-              <option value="9:16">9:16 Vertical (TikTok, Reels, Shorts)</option>
-              <option value="1:1">1:1 Square (Feed & Socials)</option>
-              <option value="21:9">21:9 Ultra-Widescreen Anamorphic</option>
+              <option value="16:9">16:9 Landscape (YouTube & Premiere)</option>
+              <option value="9:16">9:16 Vertical (TikTok & Reels & Shorts)</option>
+              <option value="1:1">1:1 Square (LinkedIn & X Feed)</option>
             </select>
           </div>
 
@@ -499,7 +470,7 @@ export const AIStudioGenerator: React.FC = () => {
               <option value="Charon">Charon (Authoritative Documentary)</option>
             </select>
           </div>
-        </div>
+        </div> {/* ✅ THIS CLOSES THE GLOBAL SETTINGS GRID */}
 
         {/* Action Buttons */}
         <div className="flex items-center justify-end gap-3 mt-4">
@@ -535,7 +506,7 @@ export const AIStudioGenerator: React.FC = () => {
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
-          </button>
+          </button> {/* ✅ EACH ELEMENT IS PAIRED CORRECTLY NOW */}
         </div>
       </div>
     </div>
