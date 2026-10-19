@@ -1,50 +1,22 @@
-@import "tailwindcss";
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OmniCut Studio - Unified AI Audio & Video Editor</title>
+    <meta name="description" content="Next-generation unified AI audio and video editor combining the power of Descript, VEED.io, Invideo AI, and Adobe Premiere Pro with real-time collaboration, multitrack mixing, transcript editing, and cloud exports." />
+    <meta property="og:title" content="OmniCut Studio - Unified AI Audio & Video Editor" />
+    <meta property="og:description" content="Next-generation unified AI audio and video editor combining the power of Descript, VEED.io, Invideo AI, and Adobe Premiere Pro with real-time collaboration, multitrack mixing, transcript editing, and cloud exports." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
 
-body {
-  background-color: #09090b;
-  color: #f4f4f5;
-  overflow: hidden;
-  user-select: none;
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-}
-
-/* Custom sleek scrollbars for Premiere Pro & Descript aesthetic */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: #09090b;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #27272a;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;
-}
-
-/* Range input styling */
-input[type="range"] {
-  -webkit-appearance: none;
-  background: #27272a;
-  border-radius: 9999px;
-}
-
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  height: 12px;
-  width: 12px;
-  border-radius: 50%;
-  background: #3b82f6;
-  cursor: pointer;
-  box-shadow: 0 0 6px rgba(59, 130, 246, 0.5);
-  transition: transform 0.1s ease;
-}
-
-input[type="range"]::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
-}
