@@ -186,11 +186,12 @@ export const AIStudioGenerator: React.FC = () => {
         <div className="p-3 rounded-xl bg-emerald-950/60 border border-emerald-800 text-emerald-300 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>
-              Project generated with synchronized audio: <strong>"{lastGeneratedTitle}"</strong>
-            </span>
+            <span>Project generated with synchronized audio: <strong>"{lastGeneratedTitle}"</strong></span>
           </div>
-          <button onClick={() => setActiveTab('editor')} className="text-xs underline text-emerald-300 hover:text-white">
+          <button
+            onClick={() => setActiveTab('editor')}
+            className="text-xs underline text-emerald-300 hover:text-white"
+          >
             Open in Timeline Editor &rarr;
           </button>
         </div>
@@ -209,7 +210,7 @@ export const AIStudioGenerator: React.FC = () => {
                 rows={4}
                 placeholder="e.g. A flying cow soaring over emerald green pastures and golden clouds, cinematic 4k..."
                 value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
+                onChange={e => setPrompt(e.target.value)}
                 disabled={isAIGenerating}
                 className="w-full bg-zinc-900 border border-zinc-700/80 rounded-xl p-3.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 shadow-inner resize-none"
               />
@@ -255,12 +256,20 @@ export const AIStudioGenerator: React.FC = () => {
       {activeEngineMode === 'image-to-video' && (
         <div className="flex flex-col gap-4 bg-zinc-900/40 p-4 border border-zinc-800 rounded-xl">
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-semibold text-zinc-300">Upload Image to Animate (e.g. cow, car, person, scenery):</label>
+            <label className="text-xs font-semibold text-zinc-300">
+              Upload Image to Animate (e.g. cow, car, person, scenery):
+            </label>
             {!imagePreview ? (
               <label className="w-full h-32 border border-dashed border-zinc-700 rounded-xl bg-zinc-950 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-purple-500 transition">
                 <Upload className="w-5 h-5 text-zinc-500" />
                 <span className="text-[11px] text-zinc-400">Click to upload image (PNG / JPG / WebP)</span>
-                <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} disabled={isAIGenerating} />
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageChange}
+                  disabled={isAIGenerating}
+                />
               </label>
             ) : (
               <div className="relative w-full rounded-xl overflow-hidden border border-zinc-700 bg-zinc-950">
@@ -277,10 +286,12 @@ export const AIStudioGenerator: React.FC = () => {
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-semibold text-zinc-300">Enter Motion & Animation Prompt:</label>
+            <label className="text-xs font-semibold text-zinc-300">
+              Enter Motion & Animation Prompt:
+            </label>
             <textarea
               value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
+              onChange={e => setPrompt(e.target.value)}
               disabled={isAIGenerating}
               placeholder="Describe motion: e.g. 'Make this cow fly gracefully over an emerald green field into the sunset, cinematic 4k'"
               className="w-full h-20 bg-zinc-950 border border-zinc-700 rounded-xl p-3 text-xs text-zinc-200 focus:outline-none focus:border-purple-500 resize-none"
@@ -307,10 +318,12 @@ export const AIStudioGenerator: React.FC = () => {
       {activeEngineMode === 'video-to-video' && (
         <div className="flex flex-col gap-4 bg-zinc-900/40 p-4 border border-zinc-800 rounded-xl">
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-semibold text-zinc-300">Select target aesthetic diffusion filter template:</label>
+            <label className="text-xs font-semibold text-zinc-300">
+              Select target aesthetic diffusion filter template:
+            </label>
             <select
               value={targetAestheticStyle}
-              onChange={(e) => setTargetAestheticStyle(e.target.value)}
+              onChange={e => setTargetAestheticStyle(e.target.value)}
               disabled={isAIGenerating}
               className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-3 text-xs text-zinc-200 focus:outline-none cursor-pointer focus:border-purple-500"
             >
@@ -322,11 +335,13 @@ export const AIStudioGenerator: React.FC = () => {
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-semibold text-zinc-300">Optional Focus Concept / Note:</label>
+            <label className="text-xs font-semibold text-zinc-300">
+              Optional Focus Concept / Note:
+            </label>
             <input
               type="text"
               value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
+              onChange={e => setPrompt(e.target.value)}
               placeholder="e.g. Enhance neon city glows and heighten night contrast"
               className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-2.5 text-xs text-zinc-200 focus:outline-none"
             />
@@ -352,10 +367,12 @@ export const AIStudioGenerator: React.FC = () => {
       {activeEngineMode === 'virtual-tryon' && (
         <div className="flex flex-col gap-4 bg-zinc-900/40 p-4 border border-zinc-800 rounded-xl">
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-semibold text-zinc-300">Choose targeted digital garment replacement:</label>
+            <label className="text-xs font-semibold text-zinc-300">
+              Choose targeted digital garment replacement:
+            </label>
             <select
               value={targetOutfitType}
-              onChange={(e) => setTargetOutfitType(e.target.value)}
+              onChange={e => setTargetOutfitType(e.target.value)}
               disabled={isAIGenerating}
               className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-3 text-xs text-zinc-200 focus:outline-none cursor-pointer focus:border-purple-500"
             >
@@ -367,11 +384,13 @@ export const AIStudioGenerator: React.FC = () => {
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-semibold text-zinc-300">Prompt Notes:</label>
+            <label className="text-xs font-semibold text-zinc-300">
+              Prompt Notes:
+            </label>
             <input
               type="text"
               value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
+              onChange={e => setPrompt(e.target.value)}
               placeholder="e.g. Ensure glossy leather finish with neon cyan stitching"
               className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-2.5 text-xs text-zinc-200 focus:outline-none"
             />
@@ -397,10 +416,12 @@ export const AIStudioGenerator: React.FC = () => {
       {/* Global Settings Block */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-zinc-900/30 border border-zinc-800 rounded-xl">
         <div className="flex flex-col gap-2">
-          <label className="text-xs font-semibold text-zinc-300">Pacing & Tone:</label>
+          <label className="text-xs font-semibold text-zinc-300">
+            Pacing & Tone:
+          </label>
           <select
             value={tone}
-            onChange={(e) => setTone(e.target.value)}
+            onChange={e => setTone(e.target.value)}
             className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none"
           >
             <option>Viral & High Energy (TikTok/Reels)</option>
@@ -411,10 +432,12 @@ export const AIStudioGenerator: React.FC = () => {
         </div>
 
         <div className="flex flex-col gap-2">
-          <label className="text-xs font-semibold text-zinc-300">Target Aspect Ratio:</label>
+          <label className="text-xs font-semibold text-zinc-300">
+            Target Aspect Ratio:
+          </label>
           <select
             value={format}
-            onChange={(e) => setFormat(e.target.value)}
+            onChange={e => setFormat(e.target.value)}
             className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none"
           >
             <option>16:9 Landscape (YouTube & Premiere)</option>
@@ -430,7 +453,7 @@ export const AIStudioGenerator: React.FC = () => {
           </label>
           <select
             value={voice}
-            onChange={(e) => setVoice(e.target.value)}
+            onChange={e => setVoice(e.target.value)}
             className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none"
           >
             <option>Zephyr (Confident Studio Narrator)</option>
@@ -480,4 +503,3 @@ export const AIStudioGenerator: React.FC = () => {
     </div>
   </div>
 );
-
