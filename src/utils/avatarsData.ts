@@ -1,4 +1,4 @@
-import { AIAvatarProfile } from '../types';
+import { AIAvatarProfile } from "./types";
 
 export const INITIAL_AVATARS: AIAvatarProfile[] = [
   // --- HUMANS ---
