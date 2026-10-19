@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useProject } from "./context/ProjectContext";
+import { useProject } from "./ProjectContext";
 import {
   Users,
   Sparkles,
@@ -23,7 +23,7 @@ import {
   Dna,
 } from 'lucide-react';
 import { AIAvatarProfile, AvatarLifeformType, AvatarMicroExpression } from "./types";
-import { audioManager } from "./utils/audioManager";
+import { audioManager } from "./audioManager";
 
 export const AvatarsStudio: React.FC = () => {
   const {
