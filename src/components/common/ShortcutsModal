@@ -1,5 +1,5 @@
 import React from 'react';
-import { useProject } from '../../context/ProjectContext';
+import { useProject } from './ProjectContext';
 import { X, Keyboard, Sparkles, Command, HelpCircle } from 'lucide-react';
 
 export const ShortcutsModal: React.FC = () => {
