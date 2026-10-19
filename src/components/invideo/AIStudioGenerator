@@ -417,7 +417,6 @@ export const AIStudioGenerator: React.FC = () => {
           </div>
         )}
 
-        {/* Global Settings Block */}
                 {/* Global Settings Block */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-zinc-900/30 p-3 rounded-xl border border-zinc-800/80">
           <div className="flex flex-col gap-1.5">
@@ -470,7 +469,7 @@ export const AIStudioGenerator: React.FC = () => {
               <option value="Charon">Charon (Authoritative Documentary)</option>
             </select>
           </div>
-        </div> {/* ✅ THIS CLOSES THE GLOBAL SETTINGS GRID */}
+        </div>
 
         {/* Action Buttons */}
         <div className="flex items-center justify-end gap-3 mt-4">
@@ -506,9 +505,10 @@ export const AIStudioGenerator: React.FC = () => {
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
-          </button> {/* ✅ EACH ELEMENT IS PAIRED CORRECTLY NOW */}
+          </button>
         </div>
       </div>
     </div>
   );
 };
+
