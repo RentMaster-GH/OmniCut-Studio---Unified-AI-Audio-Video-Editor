@@ -21,63 +21,54 @@ export const VERIFIED_STOCK_VIDEOS: VideoAsset[] = [
     title: '🌊 Cinematic Ocean Waves & Coastline',
     src: 'https://vjs.zencdn.net/v/oceans.mp4',
     category: 'nature',
-    tags: ['ocean', 'sea', 'water', 'waves', 'beach', 'coast', 'nature', 'blue', 'surf', 'island', 'travel', 'summer', 'marine', 'tide', 'deep'],
+    tags: ['ocean', 'sea', 'water', 'waves', 'beach', 'coast', 'nature', 'blue', 'surf', 'island', 'travel', 'summer', 'marine', 'tide', 'deep', 'hydrothermal', 'vent'],
     color: '#06B6D4',
     visualTag: 'ocean',
   },
   {
-    id: 'vid-cat-jump',
-    title: '🐱 AI Generated: Feline Agility & Jump',
-    src: 'https://upload.wikimedia.org/wikipedia/commons/f/f1/Cat_jumping_backwards.webm',
-    category: 'animals',
-    tags: ['cat', 'kitten', 'pet', 'animal', 'jump', 'pounce', 'feline', 'cute', 'dog', 'puppy', 'wildlife', 'creature'],
-    color: '#F59E0B',
-    visualTag: 'cat',
-  },
-  {
-    id: 'vid-golden-sunset',
-    title: '🌅 Drone Sunset & Golden Gate Aerial',
-    src: 'https://upload.wikimedia.org/wikipedia/commons/f/f7/Golden_Gate_Bridge_timelapse.webm',
-    category: 'drone',
-    tags: ['sunset', 'golden', 'bridge', 'timelapse', 'drone', 'aerial', 'landscape', 'sun', 'sky', 'horizon', 'city', 'dusk', 'sunrise', 'california'],
-    color: '#F97316',
-    visualTag: 'sunset',
-  },
-  {
     id: 'vid-sintel-action',
-    title: '⚡ Cybernetic & Cinematic Sci-Fi Journey',
-    src: 'https://test-videos.co.uk/vids/sintel/mp4/h264/720/Sintel_720_10s_1MB.mp4',
+    title: '⚡ Epic Sci-Fi Action & Cinematic Odyssey',
+    src: 'https://media.w3.org/2010/05/sintel/trailer.mp4',
     category: 'cyberpunk',
-    tags: ['cyberpunk', 'tech', 'ai', 'robot', 'future', 'coding', 'software', 'hacker', 'digital', 'sci-fi', 'action', 'story', 'dragon', 'warrior', 'cyber'],
+    tags: ['cyberpunk', 'tech', 'ai', 'robot', 'future', 'coding', 'software', 'hacker', 'digital', 'sci-fi', 'action', 'story', 'dragon', 'warrior', 'cyber', 'movie', 'film', 'epic', 'cinema'],
     color: '#8B5CF6',
     visualTag: 'cyberpunk',
+  },
+  {
+    id: 'vid-bunny-wildlife',
+    title: '🌿 Wildlife Fauna, Meadow & Creatures',
+    src: 'https://media.w3.org/2010/05/bunny/trailer.mp4',
+    category: 'animals',
+    tags: ['bunny', 'rabbit', 'character', 'fun', 'viral', 'humor', 'tiktok', 'mascot', 'kids', 'story', 'animation', 'funny', 'grass', 'farm', 'meadow', 'animal', 'creature', 'fauna', 'cat', 'dog', 'cow', 'pasture', 'field'],
+    color: '#3B82F6',
+    visualTag: 'animation',
+  },
+  {
+    id: 'vid-dramatic-nature',
+    title: '🌋 Dramatic Earth, Volcano & Landscapes',
+    src: 'https://media.w3.org/2010/05/video/movie_300.mp4',
+    category: 'nature',
+    tags: ['nature', 'earth', 'fire', 'volcano', 'drama', 'sunset', 'golden', 'landscape', 'mountain', 'snow', 'winter', 'dinosaur', 'jurassic', 'history', 'pyramid', 'ancient', 'documentary'],
+    color: '#F97316',
+    visualTag: 'sunset',
   },
   {
     id: 'vid-jellyfish-glow',
     title: '✨ Deep Sea Bioluminescent Neon Glow',
     src: 'https://test-videos.co.uk/vids/jellyfish/mp4/h264/720/Jellyfish_720_10s_1MB.mp4',
     category: 'tech',
-    tags: ['jellyfish', 'glow', 'neon', 'crypto', 'dark', 'particles', 'ambient', 'space', 'galaxy', 'quantum', 'mystery', 'stars', 'cosmos', 'astronomy'],
+    tags: ['jellyfish', 'glow', 'neon', 'crypto', 'dark', 'particles', 'ambient', 'space', 'galaxy', 'quantum', 'mystery', 'stars', 'cosmos', 'astronomy', 'alien', 'moon'],
     color: '#EC4899',
     visualTag: 'neon',
   },
   {
     id: 'vid-flower-bloom',
-    title: '🌸 Organic Growth & Creative Awakening',
+    title: '🌸 Organic Growth & Botanical Bloom',
     src: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
     category: 'nature',
-    tags: ['flower', 'garden', 'nature', 'organic', 'blossom', 'spring', 'growth', 'creative', 'art', 'peace', 'plants', 'forest', 'meadow', 'field', 'green'],
+    tags: ['flower', 'garden', 'nature', 'organic', 'blossom', 'spring', 'growth', 'creative', 'art', 'peace', 'plants', 'forest', 'meadow', 'field', 'green', 'biology', 'botanical'],
     color: '#10B981',
     visualTag: 'nature',
-  },
-  {
-    id: 'vid-bunny-viral',
-    title: '🐰 High-Retention Animated Mascot Scene',
-    src: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720/Big_Buck_Bunny_720_10s_1MB.mp4',
-    category: 'animals',
-    tags: ['bunny', 'rabbit', 'character', 'fun', 'viral', 'humor', 'tiktok', 'mascot', 'kids', 'story', 'animation', 'funny', 'grass', 'farm', 'meadow'],
-    color: '#3B82F6',
-    visualTag: 'animation',
   },
 ];
 
@@ -87,37 +78,34 @@ export const VERIFIED_STOCK_VIDEOS: VideoAsset[] = [
 export function matchVideoForPrompt(prompt: string, sceneIndex = 0): VideoAsset {
   const p = prompt.toLowerCase();
 
-  // 1. Animals / Pets / Farm / Wildlife
-  if (p.includes('cow') || p.includes('bull') || p.includes('farm') || p.includes('pasture') || p.includes('bunny') || p.includes('rabbit')) {
-    return VERIFIED_STOCK_VIDEOS[6]; // vid-bunny-viral (farm/meadow animation)
-  }
-  if (p.includes('cat') || p.includes('kitten') || p.includes('pet') || p.includes('feline') || p.includes('dog') || p.includes('puppy')) {
-    return VERIFIED_STOCK_VIDEOS[1]; // vid-cat-jump
+  // 1. Animals / Pets / Farm / Wildlife / Nature
+  if (p.includes('bunny') || p.includes('rabbit') || p.includes('cow') || p.includes('bull') || p.includes('farm') || p.includes('pasture') || p.includes('cat') || p.includes('dog') || p.includes('pet') || p.includes('animal') || p.includes('wildlife')) {
+    return VERIFIED_STOCK_VIDEOS[2]; // vid-bunny-wildlife
   }
 
-  // 2. Ocean / Water / Coast / Marine
-  if (p.includes('ocean') || p.includes('sea') || p.includes('water') || p.includes('beach') || p.includes('wave') || p.includes('surf') || p.includes('river')) {
+  // 2. Ocean / Water / Coast / Marine / Deep / Hydrothermal Vents
+  if (p.includes('ocean') || p.includes('sea') || p.includes('water') || p.includes('beach') || p.includes('wave') || p.includes('surf') || p.includes('marine') || p.includes('tide') || p.includes('deep') || p.includes('vent')) {
     return VERIFIED_STOCK_VIDEOS[0]; // vid-ocean-waves
   }
 
-  // 3. Sunset / Aerial / City / Landscape / Mountains / Winter
-  if (p.includes('sunset') || p.includes('drone') || p.includes('landscape') || p.includes('golden') || p.includes('bridge') || p.includes('aerial') || p.includes('city') || p.includes('skyline') || p.includes('mountain') || p.includes('snow') || p.includes('winter')) {
-    return VERIFIED_STOCK_VIDEOS[2]; // vid-golden-sunset
+  // 3. Sci-Fi / Action / Movie / Drama / Dragon / Cyberpunk / Tech
+  if (p.includes('action') || p.includes('sci-fi') || p.includes('movie') || p.includes('film') || p.includes('cyber') || p.includes('dragon') || p.includes('story') || p.includes('car') || p.includes('speed') || p.includes('warrior')) {
+    return VERIFIED_STOCK_VIDEOS[1]; // vid-sintel-action
   }
 
-  // 4. Flowers / Garden / Nature / Growth / Green / Dinosaur / Jurassic
-  if (p.includes('flower') || p.includes('nature') || p.includes('garden') || p.includes('plant') || p.includes('organic') || p.includes('spring') || p.includes('green field') || p.includes('meadow') || p.includes('dinosaur') || p.includes('jurassic')) {
-    return VERIFIED_STOCK_VIDEOS[5]; // vid-flower-bloom
+  // 4. Dramatic Earth / Volcano / Sunset / Aerial / Mountains / Winter / History / Documentary
+  if (p.includes('volcano') || p.includes('fire') || p.includes('sunset') || p.includes('mountain') || p.includes('snow') || p.includes('dinosaur') || p.includes('jurassic') || p.includes('ancient') || p.includes('pyramid') || p.includes('documentary')) {
+    return VERIFIED_STOCK_VIDEOS[3]; // vid-dramatic-nature
   }
 
-  // 5. Space / Galaxy / Neon / Dark / Mystery / Crypto / Fantasy / Magic
-  if (p.includes('space') || p.includes('galaxy') || p.includes('stars') || p.includes('cosmos') || p.includes('neon') || p.includes('glow') || p.includes('crypto') || p.includes('quantum') || p.includes('jellyfish') || p.includes('magic') || p.includes('wizard')) {
+  // 5. Space / Galaxy / Neon / Glow / Deep Sea / Quantum
+  if (p.includes('space') || p.includes('galaxy') || p.includes('stars') || p.includes('cosmos') || p.includes('neon') || p.includes('glow') || p.includes('jellyfish') || p.includes('alien') || p.includes('quantum')) {
     return VERIFIED_STOCK_VIDEOS[4]; // vid-jellyfish-glow
   }
 
-  // 6. Cyberpunk / Tech / AI / Future / Coding / Sci-Fi / Action / Dragon / Car / Warrior
-  if (p.includes('ai') || p.includes('cyberpunk') || p.includes('tech') || p.includes('code') || p.includes('future') || p.includes('robot') || p.includes('action') || p.includes('car') || p.includes('dragon') || p.includes('sword') || p.includes('knight') || p.includes('warrior')) {
-    return VERIFIED_STOCK_VIDEOS[3]; // vid-sintel-action
+  // 6. Flowers / Garden / Botany / Organic / Blossom
+  if (p.includes('flower') || p.includes('garden') || p.includes('plant') || p.includes('organic') || p.includes('spring') || p.includes('growth') || p.includes('bloom') || p.includes('biology')) {
+    return VERIFIED_STOCK_VIDEOS[5]; // vid-flower-bloom
   }
 
   // Multi-tag score matching fallback
