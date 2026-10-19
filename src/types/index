@@ -2,15 +2,17 @@ export type AspectRatio = '16:9' | '9:16' | '1:1' | '4:5' | '21:9';
 
 export type ClipType = 'video' | 'audio' | 'overlay' | 'caption' | 'music';
 
+export type ClipStatus = 'processing' | 'ready' | 'complete' | 'queued' | 'failed';
+
 export interface ColorGrading {
   lut: 'none' | 'cinematic-teal' | 'cyber-neon' | 'kodachrome' | 'noir' | 'warm-sunset' | 'clean-hdr';
-  brightness: number; // -100 to 100 (0 default)
-  contrast: number;   // -100 to 100 (0 default)
-  saturation: number; // -100 to 100 (0 default)
-  temperature: number;// -100 to 100 (0 default)
-  vignette: number;   // 0 to 100 (0 default)
-  exposure: number;   // -100 to 100 (0 default)
-  sharpness: number;  // 0 to 100
+  brightness: number;
+  contrast: number;
+  saturation: number;
+  temperature: number;
+  vignette: number;
+  exposure: number;
+  sharpness: number;
 }
 
 export interface CaptionStyle {
@@ -24,7 +26,7 @@ export interface CaptionStyle {
   backgroundColor: string;
   backgroundPadding: number;
   borderRadius: number;
-  positionY: number; // percentage from top (e.g. 78)
+  positionY: number;
   uppercase: boolean;
   animation: 'bounce' | 'fade' | 'pop' | 'none';
 }
@@ -34,22 +36,26 @@ export interface TimelineClip {
   trackId: string;
   title: string;
   type: ClipType;
-  start: number;       // timeline start in seconds
-  duration: number;    // duration in seconds
-  sourceStart?: number;// in-point in media source
-  volume: number;      // 0 to 1
-  speed: number;       // 0.5 to 2.0
+  start: number;
+  duration: number;
+  sourceStart?: number;
+  volume: number;
+  speed: number;
   muted: boolean;
-  color: string;       // track clip color
-  src?: string;        // media URL / base64 or video pattern
-  thumbnail?: string;  // thumbnail image or visual placeholder
-  text?: string;       // for captions and overlay text
+  color: string;
+  src?: string;
+  url?: string; // For Supabase Realtime + B-Roll Injector (alias of src)
+  thumbnail?: string;
+  text?: string;
   effects?: ColorGrading;
   captionStyle?: CaptionStyle;
   isFillerWordSegment?: boolean;
-  visualTag?: string;  // e.g. "coding", "space", "b-roll", "image-to-video", "avatar", "synthetic"
-  imageSrc?: string;   // for image-to-video animation
-  prompt?: string;     // user prompt or scene visual prompt
+  visualTag?: string;
+  imageSrc?: string;
+  prompt?: string;
+  // --- NEW FIELDS FOR B-ROLL OVERLAY / LIVE SYNC ---
+  status?: ClipStatus;
+  // -----------------------------------------------
   avatarConfig?: {
     avatarId: string;
     avatarName: string;
@@ -68,6 +74,8 @@ export interface TimelineClip {
     watermarkEnabled: boolean;
     generationTimestamp: string;
   };
+  // Allow extra metadata from Supabase
+  [key: string]: any;
 }
 
 export type AvatarLifeformType = 'human' | 'animal' | 'synthetic';
@@ -81,12 +89,12 @@ export type AvatarMicroExpression =
   | 'alert_predator';
 
 export interface BiologicalParameters {
-  breathingRateBpm: number;      // 8 - 30 BPM
-  blinkFrequencyPerMin: number;  // 10 - 25 blinks/min
-  saccadeIntensity: number;      // 0 - 100% micro eye movement
-  subsurfaceGlow: number;        // 0 - 100% epidermal light scattering
-  microTwitchFrequency: number;  // 0 - 100%
-  skinMelaninWarmth: number;     // 0 - 100%
+  breathingRateBpm: number;
+  blinkFrequencyPerMin: number;
+  saccadeIntensity: number;
+  subsurfaceGlow: number;
+  microTwitchFrequency: number;
+  skinMelaninWarmth: number;
 }
 
 export interface AIAvatarProfile {
@@ -119,7 +127,7 @@ export interface SyntheticMediaJob {
   modelUsed: string;
   outputUrl?: string;
   thumbnailUrl?: string;
-  status: 'ready' | 'processing' | 'queued';
+  status: ClipStatus;
   provenance: {
     c2paCompliant: boolean;
     cryptographicHash: string;
@@ -137,18 +145,18 @@ export interface TimelineTrack {
   muted: boolean;
   solo: boolean;
   locked: boolean;
-  volume: number;      // 0 to 1
-  height: number;      // pixels
+  volume: number;
+  height: number;
   color: string;
 }
 
 export interface TranscriptWord {
   id: string;
   word: string;
-  start: number;       // seconds
-  end: number;         // seconds
+  start: number;
+  end: number;
   isFiller: boolean;
-  fillerType?: string; // 'um', 'uh', 'you know', 'like'
+  fillerType?: string;
   confidence: number;
   deleted?: boolean;
   clipId?: string;
@@ -213,22 +221,40 @@ export interface ExportPreset {
 }
 
 export interface EqualizerBands {
-  low: number;      // 60Hz (-12 to +12 dB)
-  lowMid: number;   // 250Hz (-12 to +12 dB)
-  highMid: number;  // 2.5kHz (-12 to +12 dB)
-  high: number;     // 10kHz (-12 to +12 dB)
+  low: number;
+  lowMid: number;
+  highMid: number;
+  high: number;
 }
 
 export interface AudioMixerChannel {
   trackId: string;
   name: string;
-  volume: number;       // 0 to 1
-  pan: number;          // -1 (left) to +1 (right)
+  volume: number;
+  userPreferredVolume?: number; // For auto-ducking restoration
+  pan: number;
   eq: EqualizerBands;
   compressorEnabled: boolean;
-  compressorThreshold: number; // dB
+  compressorThreshold: number;
   studioSoundActive: boolean;
   noiseReductionDb: number;
   deReverbPct: number;
-  currentPeakLevel: number; // 0 to 1 for VU meters
+  currentPeakLevel: number;
+  [key: string]: any;
 }
+
+// === NEW: Action type for reducer ===
+export type TimelineAction =
+  | {
+      type: 'INJECT_B_ROLL_OVERLAY';
+      payload: {
+        timestamp: number;
+        videoUrl: string;
+        title?: string;
+        duration?: number;
+      };
+    }
+  | {
+      type: 'UPDATE_TIMELINE_CLIPS_LIVE';
+      payload: TimelineClip[];
+    };
