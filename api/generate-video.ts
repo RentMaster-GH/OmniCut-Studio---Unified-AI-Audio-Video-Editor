@@ -1,55 +1,68 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  const { prompt, aspect, duration, style, model, mode, referenceImage, negativePrompt } = req.body;
-  const REPLICATE_RAW = process.env.REPLICATE_API_TOKEN || '';
-  const REPLICATE = REPLICATE_RAW.trim().replace(/^Bearer\s+/,'');
-  const GEMINI = (process.env.GEMINI_API_KEY || process.env.GENERATIVE_AI_KEY || '').trim();
+  const { prompt, aspect, duration, style } = req.body;
+  const TOKEN = (process.env.REPLICATE_API_TOKEN || '').trim().replace(/^Bearer\s+/,'');
+  const GEMINI = (process.env.GEMINI_API_KEY || '').trim();
+  
+  if (!TOKEN) return res.status(500).json({ error: 'Missing REPLICATE_API_TOKEN' });
 
-  if (!REPLICATE) return res.status(500).json({ error: 'REPLICATE_API_TOKEN missing in Vercel env. Add it and redeploy.' });
-  if (!REPLICATE.startsWith('r8_')) return res.status(500).json({ error: `Invalid token format: got ${REPLICATE.slice(0,5)}... should start with r8_` });
+  let enhancedPrompt = `${prompt}, ${style || 'cinematic'} style, 8k`;
 
-  let enhancedPrompt = `${prompt}, ${style || 'cinematic'} style, 8k, high motion`;
-
-  // Optional Gemini enhance
   if (GEMINI) {
     try {
       const g = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: `Enhance this video prompt to be detailed cinematic: "${prompt}". Return only enhanced prompt.` }] }] })
+        body: JSON.stringify({ contents: [{ parts: [{ text: `Enhance video prompt: "${prompt}". Return only enhanced prompt.` }] }] })
       });
       const d = await g.json();
       const t = d.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (t) enhancedPrompt = t.slice(0, 500);
+      if (t) enhancedPrompt = t.slice(0,500);
     } catch {}
   }
 
   try {
-    // Use stable Replicate model - lucataco/animate-diff is reliable fallback
-    const modelId = model === 'pika-2.0' ? "pika/pika-2.0" : "runwayml/gen4-turbo";
-    const resCreate = await fetch('https://api.replicate.com/v1/predictions', {
+    // FIX: Use correct Replicate endpoint - POST to /v1/models/{owner}/{name}/predictions
+    // Using stable public model: lucataco/hotshot-xl which is very reliable
+    const resCreate = await fetch('https://api.replicate.com/v1/models/lucataco/hotshot-xl/predictions', {
       method: 'POST',
-      headers: { 
-        'Authorization': `Token ${REPLICATE}`,
-        'Content-Type': 'application/json' 
-      },
+      headers: { 'Authorization': `Token ${TOKEN}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: modelId,
-        input: { prompt: enhancedPrompt, duration: duration || 5, aspect_ratio: aspect || '16:9' }
+        input: {
+          prompt: enhancedPrompt,
+          n_frames: 16,
+          steps: 8
+        }
       })
     });
-    const pred = await resCreate.json();
+    
+    let pred = await resCreate.json();
+    
+    // If hotshot fails, fallback to animate-diff - super stable
     if (!resCreate.ok) {
-      console.error('Replicate create failed', pred);
-      return res.status(resCreate.status).json({ error: pred.detail || pred.title || JSON.stringify(pred), raw: pred });
+      console.log('hotshot failed, trying animate-diff', pred);
+      const res2 = await fetch('https://api.replicate.com/v1/models/lucataco/animate-diff/predictions', {
+        method: 'POST',
+        headers: { 'Authorization': `Token ${TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          input: {
+            prompt: enhancedPrompt,
+            motion_module: "mm_sd_v15_v2",
+            steps: 25
+          }
+        })
+      });
+      pred = await res2.json();
+      if (!res2.ok) return res.status(res2.status).json({ error: pred.detail || JSON.stringify(pred), raw: pred });
     }
 
-    // Poll for up to 90s
+    // Poll
     let final = pred;
-    for (let i = 0; i < 30; i++) {
-      await new Promise(r => setTimeout(r, 3000));
+    for (let i = 0; i < 40; i++) {
+      await new Promise(r => setTimeout(r, 2500));
       const poll = await fetch(`https://api.replicate.com/v1/predictions/${final.id}`, {
-        headers: { 'Authorization': `Token ${REPLICATE}` }
+        headers: { 'Authorization': `Token ${TOKEN}` }
       });
       final = await poll.json();
       if (final.status === 'succeeded') {
