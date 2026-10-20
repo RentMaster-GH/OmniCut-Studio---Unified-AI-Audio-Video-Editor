@@ -1,240 +1,277 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useProject } from "../../context/ProjectContext";
 import {
-  Sparkles,
-  Film,
-  CheckCircle2,
-  RefreshCw,
-  Shirt,
-  Loader2,
-  Image as ImageIcon,
-  Upload,
-  X,
+  Sparkles, Film, Wand2, Image as ImageIcon, Video, 
+  Mic, Clock, Layout, Upload, Play, Pause,
+  Settings2, Zap, Layers, Type, Music2,
+  Clapperboard, Lightbulb, RefreshCw, Download
 } from 'lucide-react';
-import { audioManager } from "../../utils/audioManager";
 
-export type StudioEngineMode = 'text-to-video' | 'image-to-video' | 'video-to-video' | 'virtual-tryon';
+export type EngineMode = 'text-to-video' | 'image-to-video' | 'video-to-video' | 'script-to-video' | 'ugc-avatar';
+export type AIModel = 'runway-gen4' | 'luma-dream' | 'pika-2.0' | 'sora-turbo' | 'kling-2.0';
+export type AspectRatio = '16:9' | '9:16' | '1:1' | '4:3' | '21:9';
+
+const MODELS = [
+  { id: 'runway-gen4', name: 'Runway Gen-4 Turbo', badge: 'FAST', desc: 'Best for cinematic' },
+  { id: 'luma-dream', name: 'Luma Dream Machine', badge: 'REAL', desc: 'Photoreal motion' },
+  { id: 'pika-2.0', name: 'Pika 2.0', badge: 'STYLE', desc: 'Stylized & anime' },
+  { id: 'sora-turbo', name: 'Sora Turbo', badge: 'NEW', desc: 'Long-form 60s' },
+  { id: 'kling-2.0', name: 'Kling 2.0', badge: 'PRO', desc: 'Complex physics' },
+] as const;
+
+const STYLES = ['Cinematic', 'Photorealistic', 'Anime', '3D Render', 'Vintage Film', 'Cyberpunk', 'Documentary', 'UGC iPhone', 'Stock Footage'];
+const VOICES = ['Aria - Warm Female', 'Adam - Deep Male', 'Bella - Gen-Z', 'Sam - UGC Creator', 'David - Documentary'];
 
 export const AIStudioGenerator: React.FC = () => {
-  const { generateAIVideo, isAIGenerating, setActiveTab } = useProject();
+  const { addClip } = useProject();
+  const [mode, setMode] = useState<EngineMode>('text-to-video');
+  const [model, setModel] = useState<AIModel>('runway-gen4');
+  const [prompt, setPrompt] = useState('');
+  const [enhancedPrompt, setEnhancedPrompt] = useState('');
+  const [negativePrompt, setNegativePrompt] = useState('');
+  const [aspect, setAspect] = useState<AspectRatio>('16:9');
+  const [duration, setDuration] = useState(5);
+  const [style, setStyle] = useState('Cinematic');
+  const [voice, setVoice] = useState(VOICES[0]);
+  const [autoBroll, setAutoBroll] = useState(true);
+  const [autoCaptions, setAutoCaptions] = useState(true);
+  const [autoMusic, setAutoMusic] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [referenceImage, setReferenceImage] = useState<string | null>(null);
 
-  const [activeEngineMode, setActiveEngineMode] = useState<StudioEngineMode>('text-to-video');
-  const [prompt, setPrompt] = useState<string>('');
-  const [tone, setTone] = useState<string>('viral');
-  const [format, setFormat] = useState<string>('16:9');
-  const [voice, setVoice] = useState<string>('zephyr');
-  const [durationPreset, setDurationPreset] = useState<string>('30s');
-  const [realismStyle, setRealismStyle] = useState<string>('hyper-photorealistic-8k');
-  const [targetAestheticStyle, setTargetAestheticStyle] = useState<string>('cyberpunk-anime');
-  const [targetOutfitType, setTargetOutfitType] = useState<string>('cyberpunk-leather-jacket');
-  const [lastGeneratedTitle, setLastGeneratedTitle] = useState<string | null>(null);
-
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-
-  const samplePrompts = [
-    'One-hour nature documentary on the deep ocean hydrothermal vents and bioluminescent lifeforms.',
-    'Epic historical documentary: The astronomical secrets and engineering of ancient Egyptian monuments.',
-    "Sci-Fi cinematic movie: Humanity's first interstellar jump into the Alpha Centauri planetary system.",
-    'A hyper-realistic snow leopard prowling across Himalayan crags with micro-whiskers and breathing biology in 8k.',
-    'A flying cow soaring over emerald green pastures and golden clouds, cinematic 4k.',
-    'Cinematic product reveal for an ultra-fast cyberpunk smartwatch with neon B-roll and punchy hook.',
-  ];
-
-  const handleVoicePreview = () => {
-    audioManager.speakNarration(
-      'Welcome to OmniCut Studio. Powered by unified AI audio and video routing for next-generation storytelling.',
-      voice
-    );
+  // Prompt Enhancer
+  const enhancePrompt = () => {
+    if (!prompt) return;
+    const enhancements = [
+      `${prompt}, ${style.toLowerCase()} style, ultra-detailed, 8k, dynamic camera movement: slow dolly in, soft natural lighting`,
+      `cinematic lighting, shallow depth of field, ${duration > 8 ? 'complex narrative sequence' : 'single powerful shot'}`,
+      `high motion fidelity, no flicker, smooth 24fps, professional color grading`
+    ];
+    setEnhancedPrompt(enhancements.join(', '));
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadedFile(file);
-    const reader = new FileReader();
-    reader.onload = () => setImagePreview(reader.result as string);
-    reader.readAsDataURL(file);
-  };
-
-  const clearImage = () => {
-    setUploadedFile(null);
-    setImagePreview(null);
-  };
+  useEffect(() => { if (prompt.length > 20) enhancePrompt(); }, [style]);
 
   const handleGenerate = async () => {
-    if (activeEngineMode === 'text-to-video' && !prompt.trim()) return;
-    if (activeEngineMode === 'image-to-video' && !imagePreview) return;
+    setIsGenerating(true);
+    setProgress(0);
+    // Simulate generation - replace with real API calls
+    const interval = setInterval(() => {
+      setProgress(p => {
+        if (p >= 95) { clearInterval(interval); return 95; }
+        return p + Math.random() * 8;
+      });
+    }, 400);
 
-    let finalImagePayload: string | null = null;
-    if (activeEngineMode === 'image-to-video' && imagePreview) {
-      finalImagePayload = imagePreview;
-      if (uploadedFile) {
-        try {
-          const form = new FormData();
-          form.append('file', uploadedFile);
-          const up = await fetch('/api/upload', { method: 'POST', body: form });
-          if (up.ok) {
-            const d = await up.json();
-            finalImagePayload = d.url || d.src || imagePreview;
-          }
-        } catch {}
-      }
-    }
-
-    const finalizedConceptPrompt =
-      activeEngineMode === 'text-to-video'
-        ? prompt
-        : activeEngineMode === 'image-to-video'
-        ? prompt.trim() || 'Animate this image with cinematic camera pan, zoom, and dynamic motion'
-        : activeEngineMode === 'video-to-video'
-        ? `${prompt ? prompt + ' - ' : ''}Restyled video into ${targetAestheticStyle} theme blueprint`
-        : `${prompt ? prompt + ' - ' : ''}AI Virtual Try-On outfit swap into ${targetOutfitType}`;
-
-    const res = await generateAIVideo(
-      finalizedConceptPrompt,
-      tone,
-      format,
-      activeEngineMode,
-      finalImagePayload,
-      durationPreset,
-      realismStyle
-    );
-
-    if (res?.projectTitle || res?.title) {
-      setLastGeneratedTitle(res.projectTitle || res.title);
-      setTimeout(() => setActiveTab('editor'), 700);
-    }
+    // TODO: Replace with your backend: /api/generate-video
+    // const res = await fetch('/api/generate-video', { method: 'POST', body: JSON.stringify({ mode, model, prompt: enhancedPrompt || prompt, aspect, duration, style, referenceImage }) })
+    
+    setTimeout(() => {
+      setProgress(100);
+      setIsGenerating(false);
+      // Add to timeline as demo clip
+      addClip?.({
+        id: `ai-${Date.now()}`,
+        type: 'video',
+        src: 'https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_1mb.mp4',
+        duration,
+        name: `AI: ${prompt.slice(0, 30)}...`,
+        aiMeta: { model, prompt: enhancedPrompt, style, aspect }
+      } as any);
+    }, 4500);
   };
 
   return (
-    <div className="flex flex-col h-full bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl">
-      <div className="p-4 bg-zinc-900 border-b border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-2.5">
-          <span className="p-2 rounded-lg bg-gradient-to-tr from-purple-600 to-blue-600 text-white shadow-md">
-            <Sparkles className="w-5 h-5" />
-          </span>
+    <div className="h-full flex bg-[#0a0a0a] text-white overflow-hidden">
+      {/* LEFT - Controls */}
+      <div className="w-[380px] border-r border-zinc-800 p-5 overflow-y-auto flex flex-col gap-6">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
+            <Clapperboard className="w-4 h-4" />
+          </div>
           <div>
-            <h2 className="text-sm font-bold text-white tracking-wide flex items-center gap-1.5">
-              OmniCut AI Generation Suite
-              <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded font-mono">
-                Unified Audio & Video Engine
-              </span>
-            </h2>
-            <p className="text-xs text-zinc-400">Deploy high-fidelity text-to-video, image animation, restyling diffusions, and digital clothing swaps</p>
+            <h2 className="font-semibold text-[15px]">InVideo AI Studio</h2>
+            <p className="text-[11px] text-zinc-500">v2.0 • OmniCut Engine</p>
+          </div>
+          <div className="ml-auto px-2 py-1 rounded-full bg-violet-500/20 text-violet-300 text-[10px]">PRO</div>
+        </div>
+
+        {/* Mode Switcher */}
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { id: 'text-to-video', label: 'Text → Video', icon: Type },
+            { id: 'image-to-video', label: 'Image → Video', icon: ImageIcon },
+            { id: 'script-to-video', label: 'Script → Video', icon: Film },
+            { id: 'video-to-video', label: 'Video → Video', icon: Video },
+            { id: 'ugc-avatar', label: 'UGC Avatar', icon: Mic },
+          ].map(m => (
+            <button key={m.id} onClick={() => setMode(m.id as any)}
+              className={`p-3 rounded-xl border text-[11px] flex flex-col items-center gap-1.5 transition ${mode === m.id ? 'bg-white text-black border-white' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-700'}`}>
+              <m.icon className="w-4 h-4" />
+              {m.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Model Selector */}
+        <div>
+          <label className="text-[11px] font-medium text-zinc-400 uppercase tracking-widest flex items-center gap-2 mb-2">
+            <Zap className="w-3 h-3" /> Engine Model
+          </label>
+          <div className="space-y-2">
+            {MODELS.map(m => (
+              <button key={m.id} onClick={() => setModel(m.id as AIModel)}
+                className={`w-full text-left p-3 rounded-xl border flex justify-between items-center transition ${model === m.id ? 'bg-zinc-800 border-violet-500/50' : 'bg-zinc-900/50 border-zinc-800 hover:bg-zinc-900'}`}>
+                <div>
+                  <div className="text-[13px] font-medium flex items-center gap-2">{m.name} <span className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-700">{m.badge}</span></div>
+                  <div className="text-[11px] text-zinc-500">{m.desc}</div>
+                </div>
+                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${model === m.id ? 'border-violet-500' : 'border-zinc-700'}`}>
+                  {model === m.id && <div className="w-2 h-2 rounded-full bg-violet-500" />}
+                </div>
+              </button>
+            ))}
           </div>
         </div>
-        <div className="flex bg-zinc-950 p-1 rounded-xl border border-zinc-800 self-start sm:self-auto overflow-x-auto">
-          <button type="button" onClick={() => !isAIGenerating && setActiveEngineMode('text-to-video')} className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition flex items-center gap-1.5 shrink-0 ${activeEngineMode === 'text-to-video' ? 'bg-purple-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}>
-            <Film className="w-3 h-3" /><span>Prompt Studio</span>
-          </button>
-          <button type="button" onClick={() => !isAIGenerating && setActiveEngineMode('image-to-video')} className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition flex items-center gap-1.5 shrink-0 ${activeEngineMode === 'image-to-video' ? 'bg-purple-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}>
-            <ImageIcon className="w-3 h-3" /><span>Image to Video</span>
-          </button>
-          <button type="button" onClick={() => !isAIGenerating && setActiveEngineMode('video-to-video')} className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition flex items-center gap-1.5 shrink-0 ${activeEngineMode === 'video-to-video' ? 'bg-purple-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}>
-            <RefreshCw className="w-3 h-3" /><span>AI Restyler</span>
-          </button>
-          <button type="button" onClick={() => !isAIGenerating && setActiveEngineMode('virtual-tryon')} className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition flex items-center gap-1.5 shrink-0 ${activeEngineMode === 'virtual-tryon' ? 'bg-purple-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}>
-            <Shirt className="w-3 h-3" /><span>AI Try-On</span>
-          </button>
+
+        {/* Prompt */}
+        <div className="space-y-3">
+          <label className="text-[11px] font-medium text-zinc-400 uppercase tracking-widest">Prompt</label>
+          <div className="relative">
+            <textarea value={prompt} onChange={e => setPrompt(e.target.value)}
+              placeholder={mode === 'script-to-video' ? 'Paste full script... Our AI will auto-create scenes, B-roll, voiceover...' : 'A cinematic drone shot of Accra at golden hour, bustling market...'}
+              className="w-full h-28 bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-[13px] resize-none focus:outline-none focus:border-violet-500/50 placeholder:text-zinc-600" />
+            <button onClick={enhancePrompt} className="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-zinc-800 text-[11px] flex items-center gap-1 hover:bg-zinc-700">
+              <Wand2 className="w-3 h-3" /> Enhance
+            </button>
+          </div>
+
+          {enhancedPrompt && (
+            <div className="p-3 rounded-xl bg-violet-500/10 border border-violet-500/20">
+              <div className="text-[10px] text-violet-300 uppercase tracking-widest mb-1 flex items-center gap-1"><Lightbulb className="w-3 h-3" /> Enhanced Prompt</div>
+              <div className="text-[12px] text-zinc-300 leading-relaxed">{enhancedPrompt}</div>
+            </div>
+          )}
+
+          <input value={negativePrompt} onChange={e => setNegativePrompt(e.target.value)}
+            placeholder="Negative prompt: blurry, low quality, deformed..."
+            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 text-[12px] focus:outline-none focus:border-zinc-700 placeholder:text-zinc-600" />
         </div>
+
+        {/* Image Upload for image-to-video */}
+        {mode !== 'text-to-video' && (
+          <div className="border border-dashed border-zinc-700 rounded-xl p-4 text-center">
+            {referenceImage ? <img src={referenceImage} className="w-full h-32 object-cover rounded-lg" /> : (
+              <>
+                <Upload className="w-6 h-6 mx-auto text-zinc-600 mb-2" />
+                <p className="text-[12px] text-zinc-400">Drop reference image/video</p>
+              </>
+            )}
+            <input type="file" accept="image/*,video/*" className="hidden" id="ref" onChange={e => {
+              const file = e.target.files?.[0];
+              if (file) setReferenceImage(URL.createObjectURL(file));
+            }} />
+            <label htmlFor="ref" className="mt-2 inline-block px-3 py-1.5 rounded-lg bg-white text-black text-[12px] cursor-pointer">Browse</label>
+          </div>
+        )}
+
+        {/* Settings Grid */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-[10px] text-zinc-500 uppercase">Aspect</label>
+            <select value={aspect} onChange={e => setAspect(e.target.value as any)} className="w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-lg p-2 text-[13px]">
+              <option>16:9</option><option>9:16</option><option>1:1</option><option>21:9</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-500 uppercase">Duration</label>
+            <select value={duration} onChange={e => setDuration(Number(e.target.value))} className="w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-lg p-2 text-[13px]">
+              <option value={5}>5s - Bumper</option><option value={10}>10s - Short</option><option value={20}>20s - Story</option><option value={60}>60s - Sora</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-500 uppercase">Style</label>
+            <select value={style} onChange={e => setStyle(e.target.value)} className="w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-lg p-2 text-[13px]">
+              {STYLES.map(s => <option key={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-500 uppercase">Voice</label>
+            <select value={voice} onChange={e => setVoice(e.target.value)} className="w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-lg p-2 text-[13px]">
+              {VOICES.map(v => <option key={v}>{v}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {[
+            { label: 'Auto B-roll', value: autoBroll, set: setAutoBroll, icon: Layers },
+            { label: 'Auto Captions (Hormozi)', value: autoCaptions, set: setAutoCaptions, icon: Type },
+            { label: 'Auto Music + SFX', value: autoMusic, set: setAutoMusic, icon: Music2 },
+          ].map(t => (
+            <label key={t.label} className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-[12px] cursor-pointer">
+              <span className="flex items-center gap-2"><t.icon className="w-3.5 h-3.5 text-zinc-500" /> {t.label}</span>
+              <input type="checkbox" checked={t.value} onChange={e => t.set(e.target.checked)} className="accent-violet-500" />
+            </label>
+          ))}
+        </div>
+
+        <button onClick={handleGenerate} disabled={!prompt || isGenerating}
+          className="w-full py-3.5 rounded-xl bg-white text-black font-semibold text-[14px] flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-zinc-100 transition">
+          {isGenerating ? <><RefreshCw className="w-4 h-4 animate-spin" /> Generating {progress.toFixed(0)}%</> : <><Sparkles className="w-4 h-4" /> Generate Video</>}
+        </button>
+
+        {isGenerating && (
+          <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-violet-500 to-indigo-500 transition-all duration-500" style={{ width: `${progress}%` }} />
+          </div>
+        )}
       </div>
 
-      <div className="flex-1 p-5 overflow-y-auto space-y-6 text-xs text-zinc-300 max-w-4xl mx-auto w-full flex flex-col justify-center">
-        {lastGeneratedTitle && (
-          <div className="p-3 rounded-xl bg-emerald-950/60 border border-emerald-800 text-emerald-300 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Project generated with synchronized audio: <strong>"{lastGeneratedTitle}"</strong></span>
-            </div>
-            <button onClick={() => setActiveTab('editor')} className="text-xs underline text-emerald-300 hover:text-white">Open in Timeline Editor &rarr;</button>
+      {/* RIGHT - Preview */}
+      <div className="flex-1 flex flex-col bg-[#101010]">
+        <div className="h-12 border-b border-zinc-800 flex items-center px-4 justify-between">
+          <div className="flex items-center gap-2 text-[12px] text-zinc-400"><Layout className="w-4 h-4" /> Preview • {aspect} • {duration}s • {model}</div>
+          <div className="flex items-center gap-2">
+            <button className="p-2 rounded-lg bg-zinc-900 border border-zinc-800"><Download className="w-4 h-4" /></button>
+            <button className="p-2 rounded-lg bg-zinc-900 border border-zinc-800"><Settings2 className="w-4 h-4" /></button>
           </div>
-        )}
+        </div>
 
-        {activeEngineMode === 'text-to-video' && (
-          <div className="flex flex-col gap-4 bg-zinc-900/40 p-4 border border-zinc-800 rounded-xl">
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-zinc-300 flex items-center justify-between"><span>Video Idea, Script or Topic:</span><span className="text-[11px] text-zinc-500">Generates custom scenes for ANY prompt</span></label>
-              <div className="relative">
-                <textarea rows={4} placeholder="e.g. A flying cow soaring over emerald green pastures and golden clouds, cinematic 4k..." value={prompt} onChange={(e) => setPrompt(e.target.value)} disabled={isAIGenerating} className="w-full bg-zinc-900 border border-zinc-700/80 rounded-xl p-3.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 shadow-inner resize-none" />
-                <div className="absolute right-3 bottom-3 flex items-center gap-2"><span className="text-[11px] text-zinc-500 font-mono">{prompt.length} chars</span></div>
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className={`relative bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800 shadow-2xl ${aspect === '9:16' ? 'aspect-[9/16] h-[70%]' : aspect === '1:1' ? 'aspect-square w-[60%]' : 'aspect-video w-[85%]'}`}>
+            {isGenerating ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gradient-to-br from-zinc-900 to-black">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 animate-pulse flex items-center justify-center"><Film className="w-8 h-8" /></div>
+                <div className="text-center">
+                  <p className="text-[14px] font-medium">Dreaming up your video...</p>
+                  <p className="text-[12px] text-zinc-500 mt-1">{progress < 30 ? 'Analyzing prompt' : progress < 60 ? 'Generating keyframes' : progress < 90 ? 'Interpolating motion' : 'Finalizing upscale'}</p>
+                </div>
               </div>
-            </div>
-            <div className="space-y-1.5">
-              <span className="text-[11px] text-zinc-400 font-medium">Quick Creative Prompts:</span>
-              <div className="flex flex-wrap gap-2">{samplePrompts.map((p, idx) => (<button key={idx} type="button" onClick={() => setPrompt(p)} className="text-left text-[11px] bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white px-2.5 py-1.5 rounded-lg transition">"{p.slice(0, 48)}..."</button>))}</div>
-            </div>
-            <p className="text-[11px] text-zinc-500 leading-normal">💡 OmniCut Generator: Automatically scripts scenes, matches video & audio tracks, and routes audio through the unified master volume controller.</p>
-            <div className="flex justify-end mt-2"><button type="button" onClick={handleGenerate} disabled={isAIGenerating || !prompt.trim()} className="px-5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition disabled:opacity-45">{isAIGenerating ? 'Generating Project Blocks...' : 'Execute Prompt Studio'}</button></div>
+            ) : (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                <div className="w-20 h-20 rounded-2xl bg-zinc-800 flex items-center justify-center"><Clapperboard className="w-8 h-8 text-zinc-600" /></div>
+                <p className="text-[13px] text-zinc-500">Your generated video will appear here</p>
+                <div className="flex gap-2 mt-2">
+                  <span className="px-2 py-1 rounded-full bg-zinc-800 text-[10px] text-zinc-400">4K</span>
+                  <span className="px-2 py-1 rounded-full bg-zinc-800 text-[10px] text-zinc-400">24fps</span>
+                  <span className="px-2 py-1 rounded-full bg-zinc-800 text-[10px] text-zinc-400">No Watermark</span>
+                </div>
+              </div>
+            )}
           </div>
-        )}
-
-        {activeEngineMode === 'image-to-video' && (
-          <div className="flex flex-col gap-4 bg-zinc-900/40 p-4 border border-zinc-800 rounded-xl">
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-semibold text-zinc-300">Upload Image to Animate (e.g. cow, car, person, scenery):</label>
-              {!imagePreview ? (
-                <label className="w-full h-32 border border-dashed border-zinc-700 rounded-xl bg-zinc-950 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-purple-500 transition"><Upload className="w-5 h-5 text-zinc-500" /><span className="text-[11px] text-zinc-400">Click to upload image (PNG / JPG / WebP)</span><input type="file" accept="image/*" className="hidden" onChange={handleImageChange} disabled={isAIGenerating} /></label>
-              ) : (
-                <div className="relative w-full rounded-xl overflow-hidden border border-zinc-700 bg-zinc-950"><img src={imagePreview} alt="upload preview" className="w-full h-48 object-contain bg-black" /><button type="button" onClick={clearImage} className="absolute top-2 right-2 p-1 rounded-full bg-zinc-900 border border-zinc-700 hover:bg-zinc-800 text-white"><X className="w-3.5 h-3.5" /></button></div>
-              )}
-            </div>
-            <div className="flex flex-col gap-2"><label className="text-xs font-semibold text-zinc-300">Enter Motion & Animation Prompt:</label><textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} disabled={isAIGenerating} placeholder="Describe motion: e.g. 'Make this cow fly gracefully over an emerald green field into the sunset, cinematic 4k'" className="w-full h-20 bg-zinc-950 border border-zinc-700 rounded-xl p-3 text-xs text-zinc-200 focus:outline-none focus:border-purple-500 resize-none" /></div>
-            <p className="text-[11px] text-zinc-500 leading-normal">💡 Image-to-Video Engine: Animates your uploaded photo using camera push-in, Ken Burns motion, atmospheric lighting, and full soundtrack scoring.</p>
-            <div className="flex justify-end mt-2"><button type="button" onClick={handleGenerate} disabled={isAIGenerating || !imagePreview} className="px-5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition disabled:opacity-45">{isAIGenerating ? 'Animating Image...' : 'Execute Image to Video'}</button></div>
-          </div>
-        )}
-
-        {activeEngineMode === 'video-to-video' && (
-          <div className="flex flex-col gap-4 bg-zinc-900/40 p-4 border border-zinc-800 rounded-xl">
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-semibold text-zinc-300">Select target aesthetic diffusion filter template:</label>
-              <select value={targetAestheticStyle} onChange={(e) => setTargetAestheticStyle(e.target.value)} disabled={isAIGenerating} className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-3 text-xs text-zinc-200 focus:outline-none cursor-pointer focus:border-purple-500">
-                <option value="cyberpunk-anime">Cyberpunk Anime (Vibrant neon shading & color curves)</option>
-                <option value="van-gogh">Van Gogh Impressionist (Thick oil canvas textures & warm tones)</option>
-                <option value="vintage-1970s">Vintage 1970s Hollywood Film (Warped grain & sepia contrast)</option>
-                <option value="unreal-3d">3D Unreal Studio Rendering (Clean HDR modeling matrices)</option>
-              </select>
-            </div>
-            <div className="flex flex-col gap-2"><label className="text-xs font-semibold text-zinc-300">Optional Focus Concept / Note:</label><input type="text" value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="e.g. Enhance neon city glows and heighten night contrast" className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-2.5 text-xs text-zinc-200 focus:outline-none" /></div>
-            <p className="text-[11px] text-zinc-500 leading-normal">💡 AI Restyler: Applies stylistic color LUTs and visual grading directly across active timeline tracks.</p>
-            <div className="flex justify-end mt-2"><button type="button" onClick={handleGenerate} disabled={isAIGenerating} className="px-5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition disabled:opacity-45">{isAIGenerating ? 'Applying Style Matrix...' : 'Bake AI Style Overlays'}</button></div>
-          </div>
-        )}
-
-        {activeEngineMode === 'virtual-tryon' && (
-          <div className="flex flex-col gap-4 bg-zinc-900/40 p-4 border border-zinc-800 rounded-xl">
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-semibold text-zinc-300">Choose targeted digital garment replacement:</label>
-              <select value={targetOutfitType} onChange={(e) => setTargetOutfitType(e.target.value)} disabled={isAIGenerating} className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-3 text-xs text-zinc-200 focus:outline-none cursor-pointer focus:border-purple-500">
-                <option value="cyberpunk-leather-jacket">Futuristic Cyberpunk Leather Jacket</option>
-                <option value="formal-tuxedo">Formal Silk Red Carpet Tuxedo Plait</option>
-                <option value="streetwear-hoodie">Oversized Streetwear Techwear Hoodie</option>
-                <option value="bohemian-dress">Bohemian Floral Summer Maxi Dress Piece</option>
-              </select>
-            </div>
-            <div className="flex flex-col gap-2"><label className="text-xs font-semibold text-zinc-300">Prompt Notes:</label><input type="text" value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="e.g. Ensure glossy leather finish with neon cyan stitching" className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-2.5 text-xs text-zinc-200 focus:outline-none" /></div>
-            <p className="text-[11px] text-zinc-500 leading-normal">💡 Virtual Try-On Module: Integrates digital clothing overlays and smart scene badges on the timeline.</p>
-            <div className="flex justify-end mt-2"><button type="button" onClick={handleGenerate} disabled={isAIGenerating} className="px-5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition disabled:opacity-45">{isAIGenerating ? 'Rendering Garment Swap...' : 'Execute Digital Garment Swap'}</button></div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-zinc-900/30 border border-zinc-800 rounded-xl">
-          <div className="flex flex-col gap-2"><label className="text-xs font-semibold text-zinc-300">Pacing & Tone:</label><select value={tone} onChange={(e) => setTone(e.target.value)} className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none"><option value="viral">Viral & High Energy (TikTok/Reels)</option><option value="cinematic">Cinematic & Dramatic (YouTube 4K)</option><option value="professional">Professional & Authoritative (B2B)</option><option value="conversational">Casual & Conversational (Podcast)</option></select></div>
-          <div className="flex flex-col gap-2"><label className="text-xs font-semibold text-zinc-300">Target Aspect Ratio:</label><select value={format} onChange={(e) => setFormat(e.target.value)} className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none"><option value="16:9">16:9 Landscape (YouTube & Premiere)</option><option value="9:16">9:16 Vertical (TikTok & Reels & Shorts)</option><option value="1:1">1:1 Square (LinkedIn & X Feed)</option></select></div>
-          <div className="flex flex-col gap-2"><label className="text-xs font-semibold text-zinc-300 flex items-center justify-between"><span>AI Voice Profile:</span><button type="button" onClick={handleVoicePreview} className="text-[10px] text-purple-400 hover:text-purple-300">Preview</button></label><select value={voice} onChange={(e) => setVoice(e.target.value)} className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none"><option value="zephyr">Zephyr (Confident Studio Narrator)</option><option value="kore">Kore (Warm & Articulate Professional)</option><option value="puck">Puck (Energetic Youth Creator)</option><option value="fenrir">Fenrir (Deep Cinematic Movie Voice)</option><option value="charon">Charon (Authoritative Documentary)</option></select></div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 p-4 bg-zinc-900/30 border border-zinc-800 rounded-xl">
-          <div className="flex flex-col gap-2"><label className="text-xs font-semibold text-zinc-300">Duration:</label><select value={durationPreset} onChange={(e) => setDurationPreset(e.target.value)} className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none"><option value="15s">15s</option><option value="30s">30s</option><option value="60s">60s</option><option value="90s">90s - Documentary Mode</option></select></div>
-          <div className="flex flex-col gap-2"><label className="text-xs font-semibold text-zinc-300">Realism Style:</label><select value={realismStyle} onChange={(e) => setRealismStyle(e.target.value)} className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none"><option value="hyper-photorealistic-8k">Hyper-Photorealistic 8K Life-like</option><option value="cinematic-4k">Cinematic 4K</option><option value="documentary-natural">Documentary Natural</option></select></div>
-        </div>
-
-        <div className="flex items-center justify-between pt-2">
-          <button type="button" onClick={() => setActiveTab('editor')} className="px-4 py-2.5 rounded-xl border border-zinc-700 text-zinc-300 hover:bg-zinc-800 transition text-xs">Cancel / Back to Timeline</button>
-          <button type="button" onClick={handleGenerate} disabled={isAIGenerating || (activeEngineMode === 'text-to-video' && !prompt.trim()) || (activeEngineMode === 'image-to-video' && !imagePreview)} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white font-bold text-xs shadow-xl transition transform active:scale-95 flex items-center gap-2 disabled:opacity-50">
-            {isAIGenerating ? (<><Loader2 className="w-3.5 h-3.5 animate-spin" /><span>Synthesizing Storyboard & Clips...</span></>) : (<><span>{activeEngineMode === 'text-to-video' && 'Generate Full Video Project'}{activeEngineMode === 'image-to-video' && 'Generate Video From Image'}{activeEngineMode === 'video-to-video' && 'Bake AI Style Overlays'}{activeEngineMode === 'virtual-tryon' && 'Execute Digital Garment Swap'}</span><Sparkles className="w-3.5 h-3.5" /></>)}
-          </button>
+        {/* Timeline strip */}
+        <div className="h-24 border-t border-zinc-800 p-3 flex gap-2 overflow-x-auto">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="min-w-[160px] h-full rounded-xl bg-zinc-900 border border-zinc-800 p-2 flex flex-col justify-between">
+              <div className="text-[10px] text-zinc-500">Scene {i}</div>
+              <div className="text-[11px] text-zinc-300 truncate">{prompt ? prompt.slice(0,20) : `Auto B-roll ${i}`}</div>
+              <div className="h-1 bg-zinc-800 rounded-full"><div className="h-full bg-white rounded-full" style={{width: `${i*25}%`}} /></div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
