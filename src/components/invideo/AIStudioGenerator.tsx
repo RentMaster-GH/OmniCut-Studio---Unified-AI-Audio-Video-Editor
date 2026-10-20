@@ -130,7 +130,7 @@ export const AIStudioGenerator: React.FC = () => {
           <div className={`relative bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800 shadow-2xl ${aspect === '9:16' ? 'aspect-[9/16] h-[70%]' : aspect === '1:1' ? 'aspect-square w-[60%]' : 'aspect-video w-[85%]'}`}>
             {/* >>> YOUR BLOCK IS NOW CORRECTLY HERE <<< */}
             {videoUrl ? (
-              <video ref={videoRef} src={videoUrl} controls autoPlay loop playsInline className="w-full h-full object-cover bg-black" onError={(e)=>alert('Video load error - check Pollinations key')} />
+              <video ref={videoRef} src={videoUrl} controls autoPlay loop playsInline className="w-full h-full object-cover bg-black" onError={(e)=>{ console.error('Video failed', videoUrl); }} />
             ) : isGenerating ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 animate-pulse flex items-center justify-center"><Film className="w-8 h-8" /></div>
