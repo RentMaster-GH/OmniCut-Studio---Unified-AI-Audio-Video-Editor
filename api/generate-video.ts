@@ -4,16 +4,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
-  try {
-    const { prompt, aspect } = req.body || {};
-    if (!prompt) return res.status(400).json({ error: 'Prompt required' });
-    const key = process.env.POLLINATIONS_API_KEY;
-    const duration = 5;
-    const ratio = aspect === '9:16' ? '9:16' : '16:9';
-    // Real video endpoint - seedance is fastest
-    const videoUrl = `https://gen.pollinations.ai/video/${encodeURIComponent(prompt)}?model=seedance&duration=${duration}&aspectRatio=${ratio}&key=${key}`;
-    return res.status(200).json({ url: videoUrl, type: 'video', provider: 'pollinations-seedance', status: 'succeeded' });
-  } catch (e:any) {
-    return res.status(500).json({ error: e.message });
-  }
+  const { prompt } = req.body || {};
+  const key = process.env.POLLINATIONS_API_KEY;
+  if (!key) return res.status(500).json({ error: 'Add POLLINATIONS_API_KEY in Vercel Dashboard -> Settings -> Env Vars' });
+  // Return URL directly - no fetch, no timeout
+  const url = `https://gen.pollinations.ai/video/${encodeURIComponent(prompt)}?model=seedance&duration=5&aspectRatio=16:9&key=${key}`;
+  return res.json({ url, status: 'succeeded', type: 'video' });
 }
