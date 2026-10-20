@@ -47,7 +47,7 @@ export const AIStudioGenerator: React.FC = () => {
   };
   useEffect(() => { if (prompt.length > 20) enhancePrompt(); }, [style]);
 
-  const handleGenerate = async () => {
+    const handleGenerate = async () => {
     if (!prompt.trim()) return alert('Enter prompt');
     setIsGenerating(true);
     setProgress(10);
@@ -59,18 +59,29 @@ export const AIStudioGenerator: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: enhancedPrompt || prompt, aspect, duration })
       });
+      
       const data = await res.json();
+      console.log('API response:', data);
+      
       if (!res.ok) throw new Error(data.error || 'Generate failed');
       
       clearInterval(t);
       setProgress(100);
       
-      // USE PROXY - not data.url (data.url needs Bearer header, video tag can't send it)
-      const finalUrl = data.proxyUrl || data.url;
+      const finalUrl = data.proxyUrl;
+      if (!finalUrl) throw new Error('No proxyUrl returned');
+
+      console.log('Using proxy URL:', finalUrl);
       setVideoUrl(finalUrl);
       
-      console.log('VIDEO URL:', finalUrl);
-      addClip?.({ id: `ai-${Date.now()}`, type: 'video', src: finalUrl, duration, name: prompt.slice(0,30) } as any);
+      addClip?.({ 
+        id: `ai-${Date.now()}`, 
+        type: 'video', 
+        src: finalUrl, 
+        duration, 
+        name: prompt.slice(0,30) 
+      } as any);
+      
     } catch(e:any) {
       clearInterval(t);
       alert(`Failed: ${e.message}`);
