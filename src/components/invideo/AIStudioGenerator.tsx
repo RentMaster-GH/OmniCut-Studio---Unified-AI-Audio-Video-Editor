@@ -60,12 +60,17 @@ export const AIStudioGenerator: React.FC = () => {
         body: JSON.stringify({ prompt: enhancedPrompt || prompt, aspect, duration })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.error || 'Generate failed');
+      
       clearInterval(t);
       setProgress(100);
-      setVideoUrl(data.url);
-      console.log('VIDEO URL:', data.url);
-      addClip?.({ id: `ai-${Date.now()}`, type: 'video', src: data.url, duration, name: prompt.slice(0,30) } as any);
+      
+      // USE PROXY - not data.url (data.url needs Bearer header, video tag can't send it)
+      const finalUrl = data.proxyUrl || data.url;
+      setVideoUrl(finalUrl);
+      
+      console.log('VIDEO URL:', finalUrl);
+      addClip?.({ id: `ai-${Date.now()}`, type: 'video', src: finalUrl, duration, name: prompt.slice(0,30) } as any);
     } catch(e:any) {
       clearInterval(t);
       alert(`Failed: ${e.message}`);
