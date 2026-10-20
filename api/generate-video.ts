@@ -4,10 +4,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
-  const { prompt } = req.body || {};
-  const seed = Math.floor(Math.random()*10000);
-  // Use image but as MP4 - add &enhance and make frontend animate it
-  // This will NEVER fetch-fail
-  const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1280&height=720&model=turbo&seed=${seed}&nologo=true&enhance=true`;
-  return res.status(200).json({ url, type: 'image', status: 'succeeded' });
+  try {
+    const { prompt, aspect } = req.body || {};
+    if (!prompt) return res.status(400).json({ error: 'Prompt required' });
+    const key = process.env.POLLINATIONS_API_KEY;
+    const duration = 5;
+    const ratio = aspect === '9:16' ? '9:16' : '16:9';
+    // Real video endpoint - seedance is fastest
+    const videoUrl = `https://gen.pollinations.ai/video/${encodeURIComponent(prompt)}?model=seedance&duration=${duration}&aspectRatio=${ratio}&key=${key}`;
+    return res.status(200).json({ url: videoUrl, type: 'video', provider: 'pollinations-seedance', status: 'succeeded' });
+  } catch (e:any) {
+    return res.status(500).json({ error: e.message });
+  }
 }
