@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { useProject } from './ProjectContext';
+import { useProject } from "../../context/ProjectContext";
 import {
   Play,
   Pause,
@@ -18,8 +18,8 @@ import {
   Settings,
   Film,
 } from 'lucide-react';
-import { drawLiveGenerativeScene } from './videoLibrary';
-import { audioManager } from './audioManager';
+import { drawLiveGenerativeScene } from "../../utils/videoLibrary";
+import { audioManager } from "../../utils/audioManager";
 import { ColorGrading } from './types';
 
 function getCssFilter(colorGrading: ColorGrading): string {
@@ -454,7 +454,7 @@ export const VideoPlayerCanvas: React.FC = () => {
             ref={canvasRef}
             width={1280}
             height={720}
-            className="absolute inset-0 w-full h-full object-contain cursor-pointer z-10"
+            className="absolute inset-0 w-full h-full object-cover cursor-pointer z-10"
             onClick={togglePlay}
           />
 

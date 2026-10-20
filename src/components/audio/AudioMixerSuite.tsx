@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useProject } from './ProjectContext';
+import { useProject } from "../../context/ProjectContext";
 import {
   Volume2,
   VolumeX,
@@ -12,7 +12,7 @@ import {
   Check,
   Disc,
 } from 'lucide-react';
-import { audioEngine } from './audioEngine';
+import { audioEngine } from '../../utils/audioEngine';
 
 export const AudioMixerSuite: React.FC = () => {
   const {

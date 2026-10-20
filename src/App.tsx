@@ -5,21 +5,21 @@
 
 import React, { useState } from 'react';
 import { ProjectProvider, useProject } from "./context/ProjectContext";
-import { HeaderNavBar } from "./components/HeaderNavBar";
-import { VideoPlayerCanvas } from "./components/VideoPlayerCanvas";
-import { MultitrackTimeline } from "./components/MultitrackTimeline";
-import { TranscriptEditor } from "./components/TranscriptEditor";
-import { CaptionsStudio } from "./components/CaptionsStudio";
+import { HeaderNavBar } from "./components/common/HeaderNavBar";
+import { VideoPlayerCanvas } from "./components/player/VideoPlayerCanvas";
+import { MultitrackTimeline } from "./components/timeline/MultitrackTimeline";
+import { TranscriptEditor } from "./components/transcript/TranscriptEditor";
+import { CaptionsStudio } from "./components/captions/CaptionsStudio";
 import { AIStudioGenerator } from "./components/invideo/AIStudioGenerator";
-import { AudioMixerSuite } from "./components/AudioMixerSuite";
-import { AnalyticsDashboard } from "./components/AnalyticsDashboard";
-import { CollaborativeWorkspace } from "./components/CollaborativeWorkspace";
-import { AvatarsStudio } from "./components/AvatarsStudio';
-import { SyntheticMediaStudio } from "./components/SyntheticMediaStudio';
-import { ExportModal } from "./components/ExportModal';
-import { SecurityModal } from "./components/SecurityModal';
-import { MediaUploadModal } from "./components/MediaUploadModal';
-import { ShortcutsModal } from "./components/ShortcutsModal';
+import { AudioMixerSuite } from "./components/audio/AudioMixerSuite";
+import { AnalyticsDashboard } from "./components/analytics/AnalyticsDashboard";
+import { CollaborativeWorkspace } from "./components/collab/CollaborativeWorkspace";
+import { AvatarsStudio } from "./components/avatars/AvatarsStudio";
+import { SyntheticMediaStudio } from "./components/synthetic/SyntheticMediaStudio";
+import { ExportModal } from "./components/export/ExportModal";
+import { SecurityModal } from "./components/security/SecurityModal";
+import { MediaUploadModal } from "./components/upload/MediaUploadModal";
+import { ShortcutsModal } from "./components/common/ShortcutsModal";
 import {
   FileText,
   Type,

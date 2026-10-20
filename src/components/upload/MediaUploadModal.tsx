@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { useProject } from './ProjectContext';
+import { useProject } from "../../context/ProjectContext";
 import {
   X,
   Upload,
@@ -17,7 +17,7 @@ import {
   Music,
   FolderOpen,
 } from 'lucide-react';
-import { VERIFIED_STOCK_VIDEOS } from './videoLibrary';
+import { VERIFIED_STOCK_VIDEOS } from "../../utils/videoLibrary";
 
 export const MediaUploadModal: React.FC = () => {
   const {

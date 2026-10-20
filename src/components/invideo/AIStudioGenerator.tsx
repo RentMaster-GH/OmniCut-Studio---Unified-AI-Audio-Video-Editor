@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useProject } from '@/contexts/ProjectContext';
+import { useProject } from "../../context/ProjectContext";
 import {
   Sparkles,
   Film,
@@ -11,7 +11,7 @@ import {
   Upload,
   X,
 } from 'lucide-react';
-import { audioManager } from '@/lib/audioManager';
+import { audioManager } from "../../utils/audioManager";
 
 export type StudioEngineMode = 'text-to-video' | 'image-to-video' | 'video-to-video' | 'virtual-tryon';
 
