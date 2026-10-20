@@ -4,22 +4,22 @@
  */
 
 import React, { useState } from 'react';
-import { ProjectProvider, useProject } from './ProjectContext';
-import { HeaderNavBar } from './HeaderNavBar';
-import { VideoPlayerCanvas } from './VideoPlayerCanvas';
-import { MultitrackTimeline } from './MultitrackTimeline';
-import { TranscriptEditor } from './TranscriptEditor';
-import { CaptionsStudio } from "./CaptionsStudio";
-import { AIStudioGenerator } from "./AIStudioGenerator";
-import { AudioMixerSuite } from "./AudioMixerSuite";
-import { AnalyticsDashboard } from "./AnalyticsDashboard";
-import { CollaborativeWorkspace } from "./CollaborativeWorkspace";
-import { AvatarsStudio } from './AvatarsStudio';
-import { SyntheticMediaStudio } from './SyntheticMediaStudio';
-import { ExportModal } from './ExportModal';
-import { SecurityModal } from './SecurityModal';
-import { MediaUploadModal } from './MediaUploadModal';
-import { ShortcutsModal } from './ShortcutsModal';
+import { ProjectProvider, useProject } from "./context/ProjectContext";
+import { HeaderNavBar } from "./components/HeaderNavBar";
+import { VideoPlayerCanvas } from "./components/VideoPlayerCanvas";
+import { MultitrackTimeline } from "./components/MultitrackTimeline";
+import { TranscriptEditor } from "./components/TranscriptEditor";
+import { CaptionsStudio } from "./components/CaptionsStudio";
+import { AIStudioGenerator } from "./components/invideo/AIStudioGenerator";
+import { AudioMixerSuite } from "./components/AudioMixerSuite";
+import { AnalyticsDashboard } from "./components/AnalyticsDashboard";
+import { CollaborativeWorkspace } from "./components/CollaborativeWorkspace";
+import { AvatarsStudio } from "./components/AvatarsStudio';
+import { SyntheticMediaStudio } from "./components/SyntheticMediaStudio';
+import { ExportModal } from "./components/ExportModal';
+import { SecurityModal } from "./components/SecurityModal';
+import { MediaUploadModal } from "./components/MediaUploadModal';
+import { ShortcutsModal } from "./components/ShortcutsModal';
 import {
   FileText,
   Type,
