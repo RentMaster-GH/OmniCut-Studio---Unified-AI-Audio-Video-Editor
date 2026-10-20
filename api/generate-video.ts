@@ -2,84 +2,93 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  const { prompt, aspect, duration, style } = req.body;
-  const REPLICATE = (process.env.REPLICATE_API_TOKEN || '').trim().replace(/^Bearer\s+/,'');
-  const LUMA = (process.env.LUMA_API_KEY || '').trim();
+  
+  const { prompt, aspect, style } = req.body;
+  const TOKEN = (process.env.REPLICATE_API_TOKEN || '').trim().replace(/^Bearer\s+/,'').replace(/^Token\s+/,'');
   const GEMINI = (process.env.GEMINI_API_KEY || '').trim();
   
-  let enhancedPrompt = `${prompt}, ${style || 'cinematic'} style, 8k`;
+  if (!TOKEN) return res.status(500).json({ error: 'REPLICATE_API_TOKEN missing' });
 
+  let enhancedPrompt = `${prompt}, ${style || 'cinematic'}, 8k, high quality`;
+  
   if (GEMINI) {
     try {
       const g = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: `Enhance video prompt: "${prompt}". Return only prompt.` }] }] })
+        body: JSON.stringify({ contents: [{ parts: [{ text: `Enhance this video prompt to detailed cinematic (max 300 chars): "${prompt}" - return only prompt` }] }] })
       });
       const d = await g.json();
-      const t = d.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (t) enhancedPrompt = t.slice(0,500);
+      const t = d.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      if (t && t.length > 10) enhancedPrompt = t.slice(0,500);
     } catch {}
   }
 
-  // TRY LUMA FIRST (you have key, no throttling)
-  if (LUMA) {
-    try {
-      const lumaRes = await fetch('https://api.lumalabs.ai/dream-machine/v1/generations', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${LUMA}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          prompt: enhancedPrompt, 
-          aspect_ratio: aspect === '9:16' ? '9:16' : '16:9',
-          loop: false
-        })
-      });
-      const lumaData = await lumaRes.json();
-      if (lumaRes.ok) {
-        // Poll Luma
-        for (let i = 0; i < 60; i++) {
-          await new Promise(r => setTimeout(r, 5000));
-          const poll = await fetch(`https://api.lumalabs.ai/dream-machine/v1/generations/${lumaData.id}`, {
-            headers: { 'Authorization': `Bearer ${LUMA}` }
-          });
-          const pData = await poll.json();
-          if (pData.state === 'completed') {
-            return res.status(200).json({ url: pData.assets.video, provider: 'luma', enhancedPrompt });
-          }
-          if (pData.state === 'failed') throw new Error(pData.failure_reason || 'Luma failed');
-        }
-        return res.status(200).json({ taskId: lumaData.id, provider: 'luma', status: 'dreaming', enhancedPrompt });
-      }
-      console.log('Luma create failed', lumaData);
-    } catch (e:any) { console.log('Luma error', e.message); }
-  }
-
-  // FALLBACK TO REPLICATE WITH RETRY FOR THROTTLE
-  try {
-    await new Promise(r => setTimeout(r, 11000)); // wait 11s to clear throttle
-    
-    const resCreate = await fetch('https://api.replicate.com/v1/models/lucataco/hotshot-xl/predictions', {
-      method: 'POST',
-      headers: { 'Authorization': `Token ${REPLICATE}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ input: { prompt: enhancedPrompt } })
-    });
-    let pred = await resCreate.json();
-    if (!resCreate.ok) return res.status(resCreate.status).json({ error: pred.detail || JSON.stringify(pred) });
-
-    for (let i = 0; i < 40; i++) {
-      await new Promise(r => setTimeout(r, 3000));
-      const poll = await fetch(`https://api.replicate.com/v1/predictions/${pred.id}`, {
-        headers: { 'Authorization': `Token ${REPLICATE}` }
-      });
-      const final = await poll.json();
-      if (final.status === 'succeeded') {
-        const url = Array.isArray(final.output) ? final.output[0] : final.output;
-        return res.status(200).json({ url, provider: 'replicate', enhancedPrompt });
-      }
-      if (final.status === 'failed') throw new Error(final.error);
-      pred = final;
+  // List of reliable models to try in order
+  const attempts = [
+    { 
+      url: 'https://api.replicate.com/v1/models/kwaivgi/kling-v2.5-turbo/predictions',
+      input: { prompt: enhancedPrompt, duration: 5, aspect_ratio: aspect === '9:16' ? '9:16' : '16:9', cfg_scale: 0.5 }
+    },
+    {
+      url: 'https://api.replicate.com/v1/models/luma/dream-machine/predictions',
+      input: { prompt: enhancedPrompt, aspect_ratio: aspect || '16:9', loop: false }
+    },
+    {
+      url: 'https://api.replicate.com/v1/models/minimax/video-01/predictions',
+      input: { prompt: enhancedPrompt, prompt_optimizer: true }
     }
-    return res.status(200).json({ taskId: pred.id, provider: 'replicate', status: pred.status, enhancedPrompt });
-  } catch (e:any) {
-    return res.status(500).json({ error: e.message });
+  ];
+
+  for (const attempt of attempts) {
+    try {
+      console.log(`Trying ${attempt.url}`);
+      const createRes = await fetch(attempt.url, {
+        method: 'POST',
+        headers: { 'Authorization': `Token ${TOKEN}`, 'Content-Type': 'application/json', 'Prefer': 'wait=60' },
+        body: JSON.stringify({ input: attempt.input })
+      });
+      
+      let pred = await createRes.json();
+      
+      if (!createRes.ok) {
+        console.log(`Create failed for ${attempt.url}:`, pred);
+        if (pred.detail?.includes('throttled') || pred.detail?.includes('rate')) {
+          return res.status(429).json({ error: `Throttled: ${pred.detail}. Wait 15s and retry, or add billing at replicate.com/account/billing` });
+        }
+        continue; // try next model
+      }
+
+      // Poll with same token
+      for (let i = 0; i < 60; i++) {
+        // Replicate will auto-wait if we used Prefer: wait, but poll anyway
+        if (pred.status === 'succeeded') {
+          const videoUrl = Array.isArray(pred.output) ? pred.output[0] : (pred.output as any)?.video || pred.output;
+          if (videoUrl) return res.status(200).json({ url: videoUrl, provider: 'replicate', model: attempt.url, enhancedPrompt });
+        }
+        if (pred.status === 'failed') throw new Error(pred.error || 'Generation failed');
+        
+        await new Promise(r => setTimeout(r, 4000));
+        const pollRes = await fetch(`https://api.replicate.com/v1/predictions/${pred.id}`, {
+          headers: { 'Authorization': `Token ${TOKEN}` }
+        });
+        if (!pollRes.ok) {
+          const err = await pollRes.json();
+          if (pollRes.status === 404) return res.status(404).json({ error: `Prediction ${pred.id} not found - likely token mismatch or expired. Try again. Raw: ${JSON.stringify(err)}` });
+          throw new Error(JSON.stringify(err));
+        }
+        pred = await pollRes.json();
+      }
+      return res.status(200).json({ taskId: pred.id, provider: 'replicate', status: pred.status, enhancedPrompt });
+      
+    } catch (e:any) {
+      console.log(`Attempt ${attempt.url} error:`, e.message);
+      // continue to next model
+      if (e.message.includes('Throttled') || e.message.includes('resource')) {
+        // don't try more if throttled
+        return res.status(500).json({ error: e.message });
+      }
+    }
   }
+  
+  return res.status(500).json({ error: 'All models failed. Add billing to Replicate or check LUMA_API_KEY' });
 }
