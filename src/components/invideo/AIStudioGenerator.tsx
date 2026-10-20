@@ -53,34 +53,7 @@ export const AIStudioGenerator: React.FC = () => {
 
   useEffect(() => { if (prompt.length > 20) enhancePrompt(); }, [style]);
 
-  const handleGenerate = async () => {
-    setIsGenerating(true);
-    setProgress(0);
-    // Simulate generation - replace with real API calls
-    const interval = setInterval(() => {
-      setProgress(p => {
-        if (p >= 95) { clearInterval(interval); return 95; }
-        return p + Math.random() * 8;
-      });
-    }, 400);
-
-    // TODO: Replace with your backend: /api/generate-video
-    // const res = await fetch('/api/generate-video', { method: 'POST', body: JSON.stringify({ mode, model, prompt: enhancedPrompt || prompt, aspect, duration, style, referenceImage }) })
-    
-    setTimeout(() => {
-      setProgress(100);
-      setIsGenerating(false);
-      // Add to timeline as demo clip
-      addClip?.({
-        id: `ai-${Date.now()}`,
-        type: 'video',
-        src: 'https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_1mb.mp4',
-        duration,
-        name: `AI: ${prompt.slice(0, 30)}...`,
-        aiMeta: { model, prompt: enhancedPrompt, style, aspect }
-      } as any);
-    }, 4500);
-  };
+  const handleGenerate = async () => { setIsGenerating(true); setProgress(5); try { const r = await (await fetch('/api/generate-video', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode, model, prompt: enhancedPrompt || prompt, negativePrompt, aspect, duration, style, referenceImage }) })).json(); if (!r.url) throw new Error(r.error || 'Processing'); setProgress(100); addClip?.({ id: `ai-${Date.now()}`, type: 'video', src: r.url, duration, name: `AI ${model}: ${prompt.slice(0,30)}`, aiMeta: r } as any); } catch(e:any){ alert(`Failed: ${e.message}`); } finally{ setIsGenerating(false); } };
 
   return (
     <div className="h-full flex bg-[#0a0a0a] text-white overflow-hidden">
