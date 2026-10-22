@@ -435,7 +435,7 @@ export const VideoPlayerCanvas: React.FC = () => {
           <video
             ref={videoRef}
             playsInline
-            muted={masterVolume === 0 || !!activeVideo?.muted}
+            muted={masterVolume === 0 || !!activeVideo?. }
             loop
             className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
               isVideoLoaded ? 'opacity-100' : 'opacity-0'

@@ -156,7 +156,7 @@ export const ExportModal: React.FC = () => {
       <ntsc>FALSE</ntsc>
     </rate>
     <media>
-      <video>
+      <video volume={1} >
         <format>
           <samplecharacteristics>
             <width>1920</width>
