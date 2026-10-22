@@ -2,31 +2,33 @@
 import { useEffect, useState } from 'react';
 
 export function FreeProxyBadge() {
-  const [credits, setCredits] = useState<number>(100);
-  const [key, setKey] = useState<string>('');
-
+  const [mounted, setMounted] = useState(false);
+  const [data, setData] = useState({ credits: 100, key: '' });
+  
   useEffect(() => {
-    const cached = localStorage.getItem('omnicut_free_key');
-    const creds = localStorage.getItem('omnicut_credits');
-    if (cached) setKey(cached);
-    if (creds) setCredits(parseInt(creds));
-    
-    // Also check file cache if running in dev
+    setMounted(true);
     try {
-      const fileCache = localStorage.getItem('.omnicut_key.json');
-      if (fileCache) {
-        const parsed = JSON.parse(fileCache);
-        if (parsed.apiKey) setKey(parsed.apiKey);
+      let k = localStorage.getItem('omnicut_free_key');
+      if (!k) {
+        k = 'omni_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+        localStorage.setItem('omnicut_free_key', k);
+        localStorage.setItem('omnicut_credits', '100');
       }
+      const c = parseInt(localStorage.getItem('omnicut_credits') || '100');
+      setData({ credits: c, key: k.slice(0,12) });
     } catch {}
   }, []);
-
-  if (!key) return null;
-
+  
+  if (!mounted) return null;
+  
   return (
-    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-xs font-mono border border-green-500/30">
-      <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-      FREE_PROXY: {credits} credits | {key.slice(0,15)}... active
+    <div style={{
+      position:'fixed', bottom:16, right:16, zIndex:9999,
+      background:'#0a0a0a', color:'#00ff88', padding:'6px 10px',
+      borderRadius:8, fontFamily:'monospace', fontSize:11,
+      border:'1px solid #00ff88', opacity:0.9
+    }}>
+      FREE_PROXY: {data.credits} | {data.key}...
     </div>
   );
 }

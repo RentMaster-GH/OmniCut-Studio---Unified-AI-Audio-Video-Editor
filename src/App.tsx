@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { FreeProxyBadge } from './components/FreeProxyBadge';
 import { ProjectProvider, useProject } from "./context/ProjectContext";
 import { HeaderNavBar } from "./components/common/HeaderNavBar";
 import { VideoPlayerCanvas } from "./components/player/VideoPlayerCanvas";
@@ -167,6 +168,7 @@ export default function App() {
         <MediaUploadModal />
         <ShortcutsModal />
         <SecurityModal />
+        <FreeProxyBadge />
       </div>
     </ProjectProvider>
   );
