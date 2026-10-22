@@ -3,6 +3,7 @@ import { useProject } from "../../context/ProjectContext";
 import { Sparkles, Film, Clapperboard, RefreshCw, Plus, Download, Play } from 'lucide-react';
 
 export const AIStudioGenerator: React.FC = () => {
+  console.log("FREE_PROXY active");
   const { addClip } = useProject();
   const [prompt, setPrompt] = useState('person cooking jollof in ghana cinematic');
   const [imageUrl, setImageUrl] = useState<string | null>(null);

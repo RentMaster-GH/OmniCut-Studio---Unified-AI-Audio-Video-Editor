@@ -1,36 +1,42 @@
-import { generateWithFreeProxy, getOmniKey, getCredits } from "@/lib/freeProxy";
-import { useState } from 'react'
+import { useState } from 'react';
+import { generateWithFreeProxy, getCredits } from '@/lib/freeProxy';
 
 export function useVideoGeneration() {
-  const [loading, setLoading] = useState(false)
-  const [videoUrl, setVideoUrl] = useState<string | null>(null)
-  const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
 
-  const generateImage = (prompt: string) => {
-    const { url } = await generateWithFreeProxy(prompt, 'image')
-    setImageUrl(url)
-    setVideoUrl(url) // show image in player too
-    return url
-  }
+  const generate = async (prompt: string) => {
+    setIsGenerating(true);
+    setError(null);
+    setProgress(10);
+    setGeneratedUrl(null);
 
-  const generateVideo = async (prompt: string) => {
-    setLoading(true)
     try {
-      // Pollinations FREE = IMAGE only (video alpha needs paid Pollen)
-      // So for "video" we generate cinematic image - this WILL work
-      const enhanced = `${prompt}, cinematic 8k, dynamic camera, professional color grading`
-      const { url } = await generateWithFreeProxy(enhanced, 'image', { width: 1280, height: 720 })
+      console.log('Generating:', prompt, 'Credits:', getCredits());
+      setProgress(30);
       
-      setVideoUrl(url)
-      setImageUrl(url)
-      return url
-    } catch (e) {
-      console.error(e)
-      return null
+      const { url } = await generateWithFreeProxy(prompt, 'image', { width: 1280, height: 720 });
+      
+      setProgress(70);
+      // Small delay for UX
+      await new Promise(r => setTimeout(r, 800));
+      
+      setGeneratedUrl(url);
+      setProgress(100);
+      console.log('Generated URL:', url);
+      
+    } catch (e: any) {
+      console.error(e);
+      setError(e.message || 'Generation failed - trying free fallback');
+      // Even on error, try direct pollinations URL
+      const fallback = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?nologo=true`;
+      setGeneratedUrl(fallback);
     } finally {
-      setLoading(false)
+      setIsGenerating(false);
     }
-  }
+  };
 
-  return { loading, videoUrl, imageUrl, generateImage, generateVideo, isGenerating: loading }
+  return { generate, isGenerating, generatedUrl, error, progress, credits: getCredits() };
 }
