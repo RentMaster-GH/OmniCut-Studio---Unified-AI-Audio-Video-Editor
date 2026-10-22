@@ -1,3 +1,4 @@
+import { generateWithFreeProxy, getOmniKey, getCredits } from "@/lib/freeProxy";
 import { useState } from 'react'
 
 export function useVideoGeneration() {
@@ -6,7 +7,7 @@ export function useVideoGeneration() {
   const [imageUrl, setImageUrl] = useState<string | null>(null)
 
   const generateImage = (prompt: string) => {
-    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?nologo=true&model=flux&enhance=true&seed=${Date.now()}`
+    const { url } = await generateWithFreeProxy(prompt, 'image')
     setImageUrl(url)
     setVideoUrl(url) // show image in player too
     return url
@@ -18,7 +19,7 @@ export function useVideoGeneration() {
       // Pollinations FREE = IMAGE only (video alpha needs paid Pollen)
       // So for "video" we generate cinematic image - this WILL work
       const enhanced = `${prompt}, cinematic 8k, dynamic camera, professional color grading`
-      const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhanced)}?nologo=true&model=flux&width=1280&height=720&enhance=true&seed=${Date.now()}`
+      const { url } = await generateWithFreeProxy(enhanced, 'image', { width: 1280, height: 720 })
       
       setVideoUrl(url)
       setImageUrl(url)
