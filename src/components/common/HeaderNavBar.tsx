@@ -78,7 +78,7 @@ export const HeaderNavBar: React.FC = () => {
       <header className="w-full bg-zinc-950/95 border-b border-zinc-800/80 px-4 py-2.5 flex items-center justify-between text-xs text-zinc-300 backdrop-blur-md sticky top-0 z-40 select-none">
       {/* Left: Brand & Studio Name */}
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
             <Film className="w-4 h-4" />
           </div>
@@ -96,73 +96,73 @@ export const HeaderNavBar: React.FC = () => {
         <nav className="flex items-center bg-zinc-900/90 rounded-xl p-1 border border-zinc-800 ml-1.5 sm:ml-3 overflow-x-auto max-w-[50vw] sm:max-w-none">
           <button
             onClick={() => setActiveTab('editor')}
-            title="Editor Studio (Unified Multitrack & Player)"
-            className={`px-2.5 sm:px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition font-medium shrink-0 ${
+            title="Editor (Unified Multitrack & Player)"
+            className={`px-2.5 sm:px-2 py-1 rounded-lg flex items-center gap-1.5 transition font-medium shrink-0 ${
               activeTab === 'editor'
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-zinc-400 hover:text-white'
             }`}
           >
             <Film className="w-3.5 h-3.5 text-blue-200" />
-            <span className="hidden sm:inline">Editor Studio</span>
+            <span className="hidden sm:inline">Editor</span>
           </button>
 
           <button
             onClick={() => setActiveTab('invideo_ai')}
-            title="Invideo AI Prompt-to-Video Engine"
-            className={`px-2.5 sm:px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition font-medium shrink-0 ${
+            title="Invideo Prompt-to-Video Engine"
+            className={`px-2.5 sm:px-2 py-1 rounded-lg flex items-center gap-1.5 transition font-medium shrink-0 ${
               activeTab === 'invideo_ai'
                 ? 'bg-purple-600 text-white shadow-sm'
                 : 'text-zinc-400 hover:text-white'
             }`}
           >
             <Sparkles className="w-3.5 h-3.5 text-purple-300" />
-            <span className="hidden sm:inline">Invideo AI</span>
+            <span className="hidden sm:inline">Invideo</span>
           </button>
 
           <button
             onClick={() => setActiveTab('avatars')}
-            title="AI Avatars & Digital Twins (Human, Animal & Organism Biology)"
-            className={`px-2.5 sm:px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition font-medium shrink-0 ${
+            title="Avatars & Digital Twins (Human, Animal & Organism Biology)"
+            className={`px-2.5 sm:px-2 py-1 rounded-lg flex items-center gap-1.5 transition font-medium shrink-0 ${
               activeTab === 'avatars'
                 ? 'bg-rose-600 text-white shadow-sm'
                 : 'text-zinc-400 hover:text-white'
             }`}
           >
             <Dna className="w-3.5 h-3.5 text-rose-300" />
-            <span className="hidden sm:inline">AI Avatars</span>
+            <span className="hidden sm:inline">Avatars</span>
           </button>
 
           <button
             onClick={() => setActiveTab('synthetic_media')}
-            title="Synthetic Media Studio (Neural Video, Diffusion & Audio Alteration)"
-            className={`px-2.5 sm:px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition font-medium shrink-0 ${
+            title="Synthetic Studio (Neural Video, Diffusion & Audio Alteration)"
+            className={`px-2.5 sm:px-2 py-1 rounded-lg flex items-center gap-1.5 transition font-medium shrink-0 ${
               activeTab === 'synthetic_media'
                 ? 'bg-amber-600 text-white shadow-sm'
                 : 'text-zinc-400 hover:text-white'
             }`}
           >
             <Cpu className="w-3.5 h-3.5 text-amber-300" />
-            <span className="hidden sm:inline">Synthetic Media</span>
+            <span className="hidden sm:inline">Synthetic</span>
           </button>
 
           <button
             onClick={() => setActiveTab('audio_mixer')}
-            title="Audio & EQ Suite"
-            className={`px-2.5 sm:px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition font-medium shrink-0 ${
+            title="Audio Suite"
+            className={`px-2.5 sm:px-2 py-1 rounded-lg flex items-center gap-1.5 transition font-medium shrink-0 ${
               activeTab === 'audio_mixer'
                 ? 'bg-emerald-600 text-white shadow-sm'
                 : 'text-zinc-400 hover:text-white'
             }`}
           >
             <Sliders className="w-3.5 h-3.5 text-emerald-300" />
-            <span className="hidden sm:inline">Audio & EQ</span>
+            <span className="hidden sm:inline">Audio</span>
           </button>
 
           <button
             onClick={() => setActiveTab('analytics')}
             title="Analytics & Retention"
-            className={`px-2.5 sm:px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition font-medium shrink-0 ${
+            className={`px-2.5 sm:px-2 py-1 rounded-lg flex items-center gap-1.5 transition font-medium shrink-0 ${
               activeTab === 'analytics'
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-zinc-400 hover:text-white'
@@ -175,7 +175,7 @@ export const HeaderNavBar: React.FC = () => {
           <button
             onClick={() => setActiveTab('collab')}
             title="Team & Versions"
-            className={`px-2.5 sm:px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition font-medium shrink-0 ${
+            className={`px-2.5 sm:px-2 py-1 rounded-lg flex items-center gap-1.5 transition font-medium shrink-0 ${
               activeTab === 'collab'
                 ? 'bg-indigo-600 text-white shadow-sm'
                 : 'text-zinc-400 hover:text-white'
@@ -188,7 +188,7 @@ export const HeaderNavBar: React.FC = () => {
       </div>
 
       {/* Right: Security indicators, Team avatars, Export CTA */}
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-1.5">
         {/* Security & Cloud status badges */}
         <button
           onClick={() => setShowSecurityModal(true)}
@@ -205,7 +205,7 @@ export const HeaderNavBar: React.FC = () => {
             type="text"
             value={projectTitle}
             onChange={(e) => setProjectTitle(e.target.value)}
-            className="w-20 xl:w-28 px-1.5 py-1 rounded-md bg-zinc-900 border border-zinc-800 focus:border-blue-500 text-zinc-200 text-[11px] outline-none"
+            className="w-20 2xl:w-28 px-1.5 py-1 rounded-md bg-zinc-900 border border-zinc-800 focus:border-blue-500 text-zinc-200 text-[11px] outline-none"
             title="Click to rename project"
           />
           <button
@@ -336,7 +336,7 @@ export const HeaderNavBar: React.FC = () => {
         {/* Upload / Import Media & Docs CTA */}
         <button
           onClick={() => setShowUploadModal(true)}
-          className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-600 text-zinc-200 hover:text-white font-semibold text-xs shadow transition flex items-center gap-1.5"
+          className="px-2 py-1 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-600 text-zinc-200 hover:text-white font-semibold text-xs shadow transition flex items-center gap-1.5"
           title="Upload Video, Audio, Documents, Scripts & Subtitles"
         >
           <Upload className="w-3.5 h-3.5 text-blue-400" />
