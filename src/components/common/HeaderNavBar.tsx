@@ -22,6 +22,7 @@ import {
   Cpu,
   FolderOpen,
   Check,
+  Plus,
 } from 'lucide-react';
 
 export const HeaderNavBar: React.FC = () => {
@@ -39,6 +40,7 @@ export const HeaderNavBar: React.FC = () => {
     setProjectTitle,
     savedProjects,
     loadSavedProject,
+    createNewProject,
     isEndToEndEncrypted,
     isBiometricLocked,
     masterVolume,
@@ -201,8 +203,19 @@ export const HeaderNavBar: React.FC = () => {
 
           {showProjectsMenu && (
             <div className="absolute right-0 top-9 w-64 bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl p-2 z-50">
-              <div className="text-[10px] uppercase tracking-wider text-zinc-400 px-2 py-1 font-semibold">
-                HP Laptop PostgreSQL Projects
+              <div className="flex items-center justify-between px-2 py-1.5 border-b border-zinc-800 mb-1.5">
+                <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">
+                  PostgreSQL Projects
+                </span>
+                <button
+                  onClick={() => {
+                    createNewProject();
+                    setShowProjectsMenu(false);
+                  }}
+                  className="px-2 py-0.5 rounded bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold flex items-center gap-1 transition"
+                >
+                  <Plus className="w-3 h-3" /> New Project
+                </button>
               </div>
               {savedProjects.length === 0 ? (
                 <div className="text-xs text-zinc-500 px-2 py-3">No saved projects yet.</div>

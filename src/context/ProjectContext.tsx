@@ -112,6 +112,7 @@ interface ProjectContextType {
   savedProjects: any[];
   loadSavedProject: (project: any) => void;
   refreshSavedProjects: () => Promise<void>;
+  createNewProject: () => void;
   avatars: AIAvatarProfile[];
   selectedAvatar: AIAvatarProfile | null;
   setSelectedAvatar: (avatar: AIAvatarProfile | null) => void;
@@ -895,6 +896,17 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [apiBase, projectTitle, currentProjectId, tracks, clips, transcript, aspectRatio, captionStyle, colorGrading, refreshSavedProjects]);
 
+  const createNewProject = useCallback(() => {
+    setCurrentProjectId(null);
+    setProjectTitle("New Studio Project");
+    setTracks(INITIAL_TRACKS);
+    setClips([]);
+    setTranscript([]);
+    setSelectedClipId(null);
+    setCurrentTime(0);
+    setCloudSyncStatus("synced");
+  }, []);
+
   const loadSavedProject = useCallback((project: any) => {
     if (!project) return;
     setCurrentProjectId(project.id);
@@ -1142,6 +1154,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         savedProjects,
         loadSavedProject,
         refreshSavedProjects,
+        createNewProject,
         avatars,
         selectedAvatar,
         setSelectedAvatar,

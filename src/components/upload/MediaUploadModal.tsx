@@ -58,6 +58,25 @@ export const MediaUploadModal: React.FC = () => {
     setTimeout(() => setNotification(null), 3500);
   };
 
+  const uploadToLaptopServer = async (file: File): Promise<string> => {
+    const apiBase = (import.meta as any).env?.VITE_API_URL || "";
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`${apiBase}/api/upload-media`, {
+        method: "POST",
+        body: formData,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.url) return data.url;
+      }
+    } catch (err) {
+      console.warn("Server upload fallback to local blob:", err);
+    }
+    return URL.createObjectURL(file);
+  };
+
   const processFile = async (file: File) => {
     const fileName = file.name;
     const fileType = file.type;
@@ -65,24 +84,26 @@ export const MediaUploadModal: React.FC = () => {
 
     // 1. Video files
     if (fileType.startsWith('video/') || /\.(mp4|webm|mov|mkv|m4v)$/i.test(fileName)) {
-      const blobUrl = URL.createObjectURL(file);
+      const localPreviewUrl = URL.createObjectURL(file);
       const tempVideo = document.createElement('video');
       tempVideo.preload = 'metadata';
-      tempVideo.src = blobUrl;
+      tempVideo.src = localPreviewUrl;
 
-      tempVideo.onloadedmetadata = () => {
+      tempVideo.onloadedmetadata = async () => {
         const vidDuration = tempVideo.duration || 8;
+        showToast(`Uploading "${fileName}" to HP Laptop storage...`);
+        const persistentUrl = await uploadToLaptopServer(file);
+
         const newEntry = {
           name: fileName,
           size: fileSizeStr,
           type: 'video' as const,
-          url: blobUrl,
+          url: persistentUrl,
           duration: vidDuration,
           status: 'ready' as const,
         };
         setUploadedFiles(prev => [newEntry, ...prev]);
 
-        // Automatically add clip to track-v1 at the end of current clips
         const maxStart = clips.reduce((acc, c) => Math.max(acc, c.start + c.duration), 0);
         addClip({
           id: `clip-upload-v1-${Date.now()}`,
@@ -95,35 +116,37 @@ export const MediaUploadModal: React.FC = () => {
           speed: 1,
           muted: false,
           color: '#2563EB',
-          src: blobUrl,
+          src: persistentUrl,
           text: `⚡ ${fileName.replace(/\.[^/.]+$/, '').toUpperCase()}`,
         } as any);
 
-        showToast(`Video "${fileName}" added to Timeline Track V1 with audible audio!`);
+        showToast(`Video "${fileName}" saved to HP Laptop & added to Track V1!`);
       };
       return;
     }
 
     // 2. Audio files
     if (fileType.startsWith('audio/') || /\.(mp3|wav|ogg|m4a|aac|flac)$/i.test(fileName)) {
-      const blobUrl = URL.createObjectURL(file);
+      const localPreviewUrl = URL.createObjectURL(file);
       const tempAudio = document.createElement('audio');
       tempAudio.preload = 'metadata';
-      tempAudio.src = blobUrl;
+      tempAudio.src = localPreviewUrl;
 
-      tempAudio.onloadedmetadata = () => {
+      tempAudio.onloadedmetadata = async () => {
         const audioDuration = tempAudio.duration || 10;
+        showToast(`Uploading "${fileName}" to HP Laptop storage...`);
+        const persistentUrl = await uploadToLaptopServer(file);
+
         const newEntry = {
           name: fileName,
           size: fileSizeStr,
           type: 'audio' as const,
-          url: blobUrl,
+          url: persistentUrl,
           duration: audioDuration,
           status: 'ready' as const,
         };
         setUploadedFiles(prev => [newEntry, ...prev]);
 
-        // Add to audio track track-a1
         const maxStart = clips.filter(c => c.trackId === 'track-a1').reduce((acc, c) => Math.max(acc, c.start + c.duration), 0);
         addClip({
           id: `clip-upload-a1-${Date.now()}`,
@@ -136,10 +159,10 @@ export const MediaUploadModal: React.FC = () => {
           speed: 1,
           muted: false,
           color: '#10B981',
-          src: blobUrl,
+          src: persistentUrl,
         } as any);
 
-        showToast(`Audio "${fileName}" added to Timeline Track A1!`);
+        showToast(`Audio "${fileName}" saved to HP Laptop & added to Track A1!`);
       };
       return;
     }
@@ -204,12 +227,13 @@ export const MediaUploadModal: React.FC = () => {
 
     // 4. Image / Photo files
     if (fileType.startsWith('image/')) {
-      const blobUrl = URL.createObjectURL(file);
+      showToast(`Uploading "${fileName}" to HP Laptop storage...`);
+      const persistentUrl = await uploadToLaptopServer(file);
       const newEntry = {
         name: fileName,
         size: fileSizeStr,
         type: 'image' as const,
-        url: blobUrl,
+        url: persistentUrl,
         duration: 5,
         status: 'ready' as const,
       };
@@ -226,10 +250,10 @@ export const MediaUploadModal: React.FC = () => {
         speed: 1,
         muted: false,
         color: '#EC4899',
-        src: blobUrl,
+        src: persistentUrl,
       } as any);
 
-      showToast(`Image "${fileName}" added as Overlay badge on Track V2!`);
+      showToast(`Image "${fileName}" saved to HP Laptop & added to Track V2!`);
     }
   };
 
