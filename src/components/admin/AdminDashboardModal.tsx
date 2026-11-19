@@ -11,7 +11,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ isOpen
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const apiBase = (import.meta as any).env?.VITE_API_URL || '';
+  const apiBase = (import.meta as any).env?.VITE_API_URL || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? 'https://credibleartisans.com' : '');
 
   const fetchOverview = async () => {
     setLoading(true);
