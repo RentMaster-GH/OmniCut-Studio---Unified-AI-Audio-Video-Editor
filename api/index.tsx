@@ -1065,9 +1065,17 @@ router.delete(['/projects/:id', '/api/projects/:id'], async (req: Request, res: 
   }
 });
 
-// Server-Side FFmpeg MP4 / WebM Rendering
+// Server-Side FFmpeg MP4 / WebM Rendering with 4K, Bitrates & Audio Track Mixing
 router.post(['/render-mp4', '/api/render-mp4'], async (req: Request, res: Response) => {
-  const { clips = [], format = 'mp4', title = 'OmniCut_Master' } = req.body;
+  const {
+    clips = [],
+    format = 'mp4',
+    title = 'OmniCut_Master',
+    resolution = '1080p',
+    bitrate = 'high',
+    fps = 30,
+  } = req.body;
+
   const ext = format === 'webm' ? 'webm' : 'mp4';
   const exportDir = '/home/soul/omnicut-uploads/exports';
   if (!fs.existsSync(exportDir)) fs.mkdirSync(exportDir, { recursive: true });
@@ -1075,42 +1083,74 @@ router.post(['/render-mp4', '/api/render-mp4'], async (req: Request, res: Respon
   const workDir = `/tmp/omnicut-render-${Date.now()}`;
   fs.mkdirSync(workDir, { recursive: true });
 
+  const resMap: Record<string, { w: number; h: number }> = {
+    '720p': { w: 1280, h: 720 },
+    '1080p': { w: 1920, h: 1080 },
+    '4k': { w: 3840, h: 2160 },
+  };
+  const { w, h } = resMap[resolution] || resMap['1080p'];
+
+  const bitrateMap: Record<string, { v: string; a: string; crf: string }> = {
+    standard: { v: '4M', a: '128k', crf: '24' },
+    high: { v: '12M', a: '192k', crf: '20' },
+    master: { v: '35M', a: '320k', crf: '17' },
+  };
+  const br = bitrateMap[bitrate] || bitrateMap['high'];
+  const targetFps = [24, 30, 60].includes(Number(fps)) ? Number(fps) : 30;
+
+  const resolveClipSource = async (clip: any, fallbackPath: string): Promise<string | null> => {
+    if (!clip?.src || typeof clip.src !== 'string') return null;
+    if (clip.src.includes('/media/')) {
+      const rel = clip.src.split('/media/') || path.basename(clip.src);
+      const localFile = path.join('/home/soul/omnicut-uploads', rel);
+      if (fs.existsSync(localFile)) return localFile;
+    } else if (clip.src.startsWith('http')) {
+      const resp = await fetch(clip.src);
+      if (resp.ok) {
+        const buf = Buffer.from(await resp.arrayBuffer());
+        fs.writeFileSync(fallbackPath, buf);
+        return fallbackPath;
+      }
+    }
+    return null;
+  };
+
   try {
-    const videoClips = (Array.isArray(clips) ? clips : [])
+    const allClips = Array.isArray(clips) ? clips : [];
+    const videoClips = allClips
       .filter((c: any) => (c.type === 'video' || c.trackId === 'track-v1') && c.src)
+      .sort((a: any, b: any) => (a.start || 0) - (b.start || 0));
+
+    const audioClips = allClips
+      .filter((c: any) => (c.type === 'audio' || c.trackId === 'track-a1' || c.trackId === 'track-a2') && c.src && !c.muted)
       .sort((a: any, b: any) => (a.start || 0) - (b.start || 0));
 
     const segmentFiles: string[] = [];
 
     for (let i = 0; i < videoClips.length; i++) {
       const clip = videoClips[i];
-      let inputPath = path.join(workDir, `raw_${i}.mp4`);
+      const inputPath = await resolveClipSource(clip, path.join(workDir, `raw_v_${i}.mp4`));
       const normPath = path.join(workDir, `norm_${i}.mp4`);
       const clipDur = Math.max(1, Number(clip.duration) || 5);
+      const clipVol = clip.muted ? 0 : (typeof clip.volume === 'number' ? clip.volume : 1);
 
-      if (typeof clip.src === 'string' && clip.src.includes('/media/')) {
-        const relMediaPath = clip.src.split('/media/')[1] || path.basename(clip.src);
-        const localFile = path.join('/home/soul/omnicut-uploads', relMediaPath);
-        if (fs.existsSync(localFile)) {
-          inputPath = localFile;
-        }
-      } else if (typeof clip.src === 'string' && clip.src.startsWith('http')) {
-        const resp = await fetch(clip.src);
-        if (resp.ok) {
-          const buf = Buffer.from(await resp.arrayBuffer());
-          fs.writeFileSync(inputPath, buf);
-        }
-      }
-
-      if (fs.existsSync(inputPath)) {
+      if (inputPath && fs.existsSync(inputPath)) {
         await execFileAsync('ffmpeg', [
           '-y',
           '-i', inputPath,
+          '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo',
           '-t', String(clipDur),
-          '-vf', 'scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,fps=30,format=yuv420p',
+          '-vf', `scale=${w}:${h}:force_original_aspect_ratio=decrease,pad=${w}:${h}:(ow-iw)/2:(oh-ih)/2,fps=${targetFps},format=yuv420p`,
+          '-filter_complex', `[0:a?]volume=${clipVol}[va];[va][1:a]amix=inputs=2:duration=first:dropout_transition=0[aout]`,
+          '-map', '0:v:0',
+          '-map', '[aout]',
           '-c:v', 'libx264',
-          '-preset', 'veryfast',
+          '-preset', resolution === '4k' ? 'superfast' : 'veryfast',
+          '-b:v', br.v,
+          '-maxrate', br.v,
+          '-bufsize', br.v,
           '-c:a', 'aac',
+          '-b:a', br.a,
           '-ar', '44100',
           '-ac', '2',
           normPath
@@ -1119,27 +1159,22 @@ router.post(['/render-mp4', '/api/render-mp4'], async (req: Request, res: Respon
       }
     }
 
-    const safeTitle = String(title).replace(/[^a-zA-Z0-9_-]/g, '_');
-    const outFileName = `${safeTitle}_${Date.now()}.${ext}`;
-    const outFilePath = path.join(exportDir, outFileName);
+    const stitchedVideoPath = path.join(workDir, 'stitched.mp4');
 
     if (segmentFiles.length === 0) {
-      // Render a clean 1080p studio title card video if timeline has no external video files
       await execFileAsync('ffmpeg', [
         '-y',
-        '-f', 'lavfi', '-i', 'color=c=#09090b:s=1920x1080:d=5:r=30',
+        '-f', 'lavfi', '-i', `color=c=#09090b:s=${w}x${h}:d=5:r=${targetFps}`,
         '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo',
         '-t', '5',
-        '-c:v', ext === 'webm' ? 'libvpx-vp9' : 'libx264',
-        '-c:a', ext === 'webm' ? 'libopus' : 'aac',
-        outFilePath
+        '-c:v', 'libx264',
+        '-b:v', br.v,
+        '-c:a', 'aac',
+        '-b:a', br.a,
+        stitchedVideoPath
       ]);
     } else if (segmentFiles.length === 1) {
-      if (ext === 'mp4') {
-        fs.copyFileSync(segmentFiles[0], outFilePath);
-      } else {
-        await execFileAsync('ffmpeg', ['-y', '-i', segmentFiles[0], '-c:v', 'libvpx-vp9', '-c:a', 'libopus', outFilePath]);
-      }
+      fs.copyFileSync(segmentFiles, stitchedVideoPath);
     } else {
       const concatListPath = path.join(workDir, 'concat.txt');
       fs.writeFileSync(concatListPath, segmentFiles.map(f => `file '${f}'`).join(String.fromCharCode(10)));
@@ -1148,7 +1183,64 @@ router.post(['/render-mp4', '/api/render-mp4'], async (req: Request, res: Respon
         '-f', 'concat',
         '-safe', '0',
         '-i', concatListPath,
-        '-c', ext === 'mp4' ? 'copy' : 'libvpx-vp9',
+        '-c', 'copy',
+        stitchedVideoPath
+      ]);
+    }
+
+    // Mix external timeline audio tracks (A1/A2) if present
+    const resolvedAudios: { path: string; startMs: number; volume: number }[] = [];
+    for (let j = 0; j < audioClips.length; j++) {
+      const aClip = audioClips[j];
+      const aPath = await resolveClipSource(aClip, path.join(workDir, `raw_a_${j}.mp3`));
+      if (aPath && fs.existsSync(aPath)) {
+        resolvedAudios.push({
+          path: aPath,
+          startMs: Math.max(0, Math.round((Number(aClip.start) || 0) * 1000)),
+          volume: typeof aClip.volume === 'number' ? aClip.volume : 1,
+        });
+      }
+    }
+
+    const safeTitle = String(title).replace(/[^a-zA-Z0-9_-]/g, '_');
+    const outFileName = `${safeTitle}_${resolution}_${Date.now()}.${ext}`;
+    const outFilePath = path.join(exportDir, outFileName);
+
+    if (resolvedAudios.length > 0) {
+      const ffmpegArgs = ['-y', '-i', stitchedVideoPath];
+      const filterParts: string[] = ['[0:a]volume=1.0[base_a]'];
+      const mixInputs: string[] = ['[base_a]'];
+
+      resolvedAudios.forEach((aud, idx) => {
+        ffmpegArgs.push('-i', aud.path);
+        const inputIdx = idx + 1;
+        filterParts.push(`[${inputIdx}:a]adelay=${aud.startMs}|${aud.startMs},volume=${aud.volume}[aud_${idx}]`);
+        mixInputs.push(`[aud_${idx}]`);
+      });
+
+      filterParts.push(`${mixInputs.join('')}amix=inputs=${mixInputs.length}:duration=first:dropout_transition=2[final_a]`);
+
+      ffmpegArgs.push(
+        '-filter_complex', filterParts.join(';'),
+        '-map', '0:v:0',
+        '-map', '[final_a]',
+        '-c:v', ext === 'mp4' ? 'copy' : 'libvpx-vp9',
+        '-c:a', ext === 'mp4' ? 'aac' : 'libopus',
+        '-b:a', br.a,
+        outFilePath
+      );
+
+      await execFileAsync('ffmpeg', ffmpegArgs);
+    } else if (ext === 'mp4') {
+      fs.copyFileSync(stitchedVideoPath, outFilePath);
+    } else {
+      await execFileAsync('ffmpeg', [
+        '-y',
+        '-i', stitchedVideoPath,
+        '-c:v', 'libvpx-vp9',
+        '-b:v', br.v,
+        '-c:a', 'libopus',
+        '-b:a', br.a,
         outFilePath
       ]);
     }
@@ -1162,132 +1254,12 @@ router.post(['/render-mp4', '/api/render-mp4'], async (req: Request, res: Respon
       url: `${baseUrl}/media/exports/${outFileName}`,
       fileName: outFileName,
       sizeBytes: stats.size,
+      preset: { resolution, bitrate, fps: targetFps, mixedAudioTracks: resolvedAudios.length },
     });
   } catch (err: any) {
     fs.rmSync(workDir, { recursive: true, force: true });
     return res.status(500).json({ error: 'FFmpeg render failed', details: err?.message });
   }
-});
-
-// List Saved Laptop Media Files (/api/media-library)
-router.get(['/media-library', '/api/media-library'], (_req: Request, res: Response) => {
-  try {
-    const uid = (req as any).user?.userId || 1;
-    const dir = path.join('/home/soul/omnicut-uploads', `user_${uid}`);
-    if (!fs.existsSync(dir)) return res.json([]);
-    const baseUrl = process.env.APP_URL || 'https://credibleartisans.com';
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-    const files = entries
-      .filter((e) => e.isFile() && /.(mp4|webm|mov|mkv|m4v|mp3|wav|ogg|m4a|aac|flac|png|jpg|jpeg|webp|gif)$/i.test(e.name))
-      .map((e) => {
-        const fullPath = path.join(dir, e.name);
-        const stat = fs.statSync(fullPath);
-        const ext = path.extname(e.name).toLowerCase();
-        const type = /.(mp4|webm|mov|mkv|m4v)$/.test(ext)
-          ? 'video'
-          : /.(mp3|wav|ogg|m4a|aac|flac)$/.test(ext)
-          ? 'audio'
-          : 'image';
-        return {
-          name: e.name,
-          type,
-          sizeBytes: stat.size,
-          sizeLabel: `${(stat.size / (1024 * 1024)).toFixed(2)} MB`,
-          url: `${baseUrl}/media/user_${uid}/${e.name}`,
-          createdAt: stat.mtime,
-        };
-      })
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    return res.json(files);
-  } catch (err: any) {
-    return res.status(500).json({ error: 'Failed to list media library', details: err?.message });
-  }
-});
-
-// Admin Dashboard Overview & User Management (Admin Role Only)
-router.get(['/admin/overview', '/api/admin/overview'], async (req: Request, res: Response) => {
-  if ((req as any).user?.role !== 'admin' && (req as any).user?.email !== 'papastickle@gmail.com') {
-    return res.status(403).json({ error: 'Admin privileges required.' });
-  }
-  try {
-    const usersRes = await pool.query(`
-      SELECT u.id, u.email, u.name, u.role, u.created_at,
-             COUNT(p.id)::int AS project_count
-      FROM users u
-      LEFT JOIN projects p ON p.user_id = u.id
-      GROUP BY u.id
-      ORDER BY u.created_at ASC
-    `);
-
-    const getDirStats = (dirPath: string) => {
-      if (!fs.existsSync(dirPath)) return { bytes: 0, files: 0 };
-      let bytes = 0;
-      let files = 0;
-      for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
-        const full = path.join(dirPath, entry.name);
-        if (entry.isDirectory()) {
-          const sub = getDirStats(full);
-          bytes += sub.bytes;
-          files += sub.files;
-        } else if (entry.isFile()) {
-          bytes += fs.statSync(full).size;
-          files += 1;
-        }
-      }
-      return { bytes, files };
-    };
-
-    const usersWithStorage = usersRes.rows.map((u: any) => {
-      const userStats = getDirStats(path.join('/home/soul/omnicut-uploads', `user_${u.id}`));
-      return {
-        ...u,
-        storageBytes: userStats.bytes,
-        storageMb: (userStats.bytes / (1024 * 1024)).toFixed(2),
-        fileCount: userStats.files,
-      };
-    });
-
-    const totalStats = getDirStats('/home/soul/omnicut-uploads');
-    return res.json({
-      totalUsers: usersWithStorage.length,
-      totalProjects: usersWithStorage.reduce((sum: number, u: any) => sum + u.project_count, 0),
-      totalStorageMb: (totalStats.bytes / (1024 * 1024)).toFixed(2),
-      totalFiles: totalStats.files,
-      users: usersWithStorage,
-    });
-  } catch (err: any) {
-    return res.status(500).json({ error: 'Failed to fetch admin overview', details: err?.message });
-  }
-});
-
-router.delete(['/admin/users/:id', '/api/admin/users/:id'], async (req: Request, res: Response) => {
-  if ((req as any).user?.role !== 'admin' && (req as any).user?.email !== 'papastickle@gmail.com') {
-    return res.status(403).json({ error: 'Admin privileges required.' });
-  }
-  const targetId = Number(req.params.id);
-  if (targetId === (req as any).user?.userId) {
-    return res.status(400).json({ error: 'You cannot delete your own admin account.' });
-  }
-  try {
-    await pool.query('DELETE FROM users WHERE id = $1', [targetId]);
-    const userDir = path.join('/home/soul/omnicut-uploads', `user_${targetId}`);
-    if (fs.existsSync(userDir)) fs.rmSync(userDir, { recursive: true, force: true });
-    return res.json({ success: true });
-  } catch (err: any) {
-    return res.status(500).json({ error: 'Failed to delete user', details: err?.message });
-  }
-});
-
-// Delete User Media File (/api/media-library/:filename)
-router.delete(['/media-library/:filename', '/api/media-library/:filename'], (req: Request, res: Response) => {
-  const uid = (req as any).user?.userId || 1;
-  const safeName = path.basename(req.params.filename || '');
-  if (!safeName) return res.status(400).json({ error: 'Invalid filename' });
-  const filePath = path.join('/home/soul/omnicut-uploads', `user_${uid}`, safeName);
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath);
-  }
-  return res.json({ success: true });
 });
 
 app.use(router);
