@@ -205,7 +205,7 @@ export const HeaderNavBar: React.FC = () => {
             type="text"
             value={projectTitle}
             onChange={(e) => setProjectTitle(e.target.value)}
-            className="w-36 px-2 py-1 rounded-lg bg-zinc-900 border border-zinc-800 focus:border-blue-500 text-zinc-200 text-[11px] outline-none"
+            className="w-24 xl:w-32 px-2 py-1 rounded-lg bg-zinc-900 border border-zinc-800 focus:border-blue-500 text-zinc-200 text-[11px] outline-none"
             title="Click to rename project"
           />
           <button
@@ -214,7 +214,7 @@ export const HeaderNavBar: React.FC = () => {
             title="Click to save project to HP Laptop PostgreSQL now"
           >
             <Cloud className={`w-3.5 h-3.5 ${cloudSyncStatus === 'synced' ? 'text-emerald-400' : cloudSyncStatus === 'syncing' ? 'text-blue-400 animate-pulse' : 'text-red-400'}`} />
-            <span>{cloudSyncStatus === 'synced' ? 'Saved to DB' : cloudSyncStatus === 'syncing' ? 'Saving...' : 'Offline'}</span>
+            <span>{cloudSyncStatus === 'synced' ? 'Saved' : cloudSyncStatus === 'syncing' ? 'Saving...' : 'Offline'}</span>
           </button>
           <button
             onClick={() => setShowProjectsMenu(!showProjectsMenu)}
@@ -373,7 +373,7 @@ export const HeaderNavBar: React.FC = () => {
           className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-blue-600/25 transition flex items-center gap-1.5"
         >
           <Download className="w-3.5 h-3.5" />
-          <span>Export 4K</span>
+          <span>Export</span>
         </button>
       </div>
     </header>
