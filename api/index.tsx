@@ -36,6 +36,22 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 app.use('/media', express.static(uploadDir));
 
+// Lazy Gemini client helper - avoids crash if GEMINI_API_KEY is not set
+function getAI(): GoogleGenAI | null {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+  return new GoogleGenAI({
+    apiKey,
+    httpOptions: {
+      headers: {
+        'User-Agent': 'aistudio-build',
+      },
+    },
+  });
+}
+
+const router = express.Router();
+
 // --- JWT & Password Hashing Helpers ---
 const JWT_SECRET = process.env.JWT_SECRET || process.env.DATABASE_URL || 'omnicut-hp-elitebook-secret-key-2026';
 
@@ -137,7 +153,7 @@ router.get(['/auth/me', '/api/auth/me'], (req: Request, res: Response) => {
 
 router.use((req: Request, res: Response, next) => {
   const publicPaths = ['/health', '/api/health', '/db-health', '/api/db-health', '/auth/status', '/api/auth/status', '/auth/setup', '/api/auth/setup', '/auth/login', '/api/auth/login'];
-  if (publicPaths.includes(req.path) || !req.path.startsWith('/api')) {
+  if (publicPaths.includes(req.path)) {
     return next();
   }
   const authHeader = req.headers.authorization || '';
@@ -149,22 +165,6 @@ router.use((req: Request, res: Response, next) => {
   (req as any).user = decoded;
   return next();
 });
-
-// Lazy Gemini client helper - avoids crash if GEMINI_API_KEY is not set
-function getAI(): GoogleGenAI | null {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return null;
-  return new GoogleGenAI({
-    apiKey,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build',
-      },
-    },
-  });
-}
-
-const router = express.Router();
 
 // Health check
 router.get(['/health', '/api/health'], (req: Request, res: Response) => {
@@ -1077,8 +1077,7 @@ router.post(['/render-mp4', '/api/render-mp4'], async (req: Request, res: Respon
       }
     } else {
       const concatListPath = path.join(workDir, 'concat.txt');
-      fs.writeFileSync(concatListPath, segmentFiles.map(f => `file '${f}'`).join('
-'));
+      fs.writeFileSync(concatListPath, segmentFiles.map(f => `file '${f}'`).join(String.fromCharCode(10)));
       await execFileAsync('ffmpeg', [
         '-y',
         '-f', 'concat',
