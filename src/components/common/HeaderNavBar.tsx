@@ -205,7 +205,7 @@ export const HeaderNavBar: React.FC = () => {
             type="text"
             value={projectTitle}
             onChange={(e) => setProjectTitle(e.target.value)}
-            className="w-24 xl:w-32 px-2 py-1 rounded-lg bg-zinc-900 border border-zinc-800 focus:border-blue-500 text-zinc-200 text-[11px] outline-none"
+            className="w-20 xl:w-28 px-1.5 py-1 rounded-md bg-zinc-900 border border-zinc-800 focus:border-blue-500 text-zinc-200 text-[11px] outline-none"
             title="Click to rename project"
           />
           <button
@@ -326,7 +326,7 @@ export const HeaderNavBar: React.FC = () => {
         {/* Shortcuts & Guide */}
         <button
           onClick={() => setShowShortcutsModal(true)}
-          className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white transition text-xs"
+          className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-md bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white transition text-xs"
           title="Keyboard Shortcuts & User Guide"
         >
           <Keyboard className="w-3.5 h-3.5 text-zinc-400" />
@@ -340,7 +340,7 @@ export const HeaderNavBar: React.FC = () => {
           title="Upload Video, Audio, Documents, Scripts & Subtitles"
         >
           <Upload className="w-3.5 h-3.5 text-blue-400" />
-          <span>Import Media</span>
+          <span>Import</span>
         </button>
 
         {/* Admin Dashboard Button (Admin Role Only) */}
