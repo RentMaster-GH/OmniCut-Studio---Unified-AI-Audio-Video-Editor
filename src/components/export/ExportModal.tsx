@@ -34,6 +34,9 @@ export const ExportModal: React.FC = () => {
   const [completedUrl, setCompletedUrl] = useState<string | null>(null);
   const [completedFileName, setCompletedFileName] = useState<string>('');
   const [fileSizeNotice, setFileSizeNotice] = useState<string>('');
+  const [resolution, setResolution] = useState<'720p' | '1080p' | '4k'>('1080p');
+  const [bitrate, setBitrate] = useState<'standard' | 'high' | 'master'>('high');
+  const [fps, setFps] = useState<24 | 30 | 60>(30);
 
   if (!showExportModal) return null;
 
