@@ -396,6 +396,57 @@ export const ExportModal: React.FC = () => {
             </div>
           </div>
 
+          {/* FFmpeg Video Quality & Audio Mix Presets */}
+          {(selectedFormat === 'mp4' || selectedFormat === 'webm') && (
+            <div className="p-3.5 rounded-xl bg-zinc-900/90 border border-zinc-800 space-y-2.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-zinc-200">HP Laptop FFmpeg Render Presets</span>
+                <span className="text-[10px] text-emerald-400 font-medium">Auto-Mixes A1/A2 Audio</span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="block text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Resolution</label>
+                  <select
+                    value={resolution}
+                    onChange={(e) => setResolution(e.target.value as any)}
+                    className="w-full px-2 py-1.5 rounded-lg bg-zinc-950 border border-zinc-700 text-zinc-100 text-xs outline-none"
+                  >
+                    <option value="720p">720p HD</option>
+                    <option value="1080p">1080p Full HD</option>
+                    <option value="4k">4K Ultra HD</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Bitrate Quality</label>
+                  <select
+                    value={bitrate}
+                    onChange={(e) => setBitrate(e.target.value as any)}
+                    className="w-full px-2 py-1.5 rounded-lg bg-zinc-950 border border-zinc-700 text-zinc-100 text-xs outline-none"
+                  >
+                    <option value="standard">Standard (4 Mbps)</option>
+                    <option value="high">High (12 Mbps)</option>
+                    <option value="master">Master (35 Mbps)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Frame Rate</label>
+                  <select
+                    value={fps}
+                    onChange={(e) => setFps(Number(e.target.value) as any)}
+                    className="w-full px-2 py-1.5 rounded-lg bg-zinc-950 border border-zinc-700 text-zinc-100 text-xs outline-none"
+                  >
+                    <option value={24}>24 FPS (Cinema)</option>
+                    <option value={30}>30 FPS (Standard)</option>
+                    <option value={60}>60 FPS (Smooth)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Project Summary Stats */}
           <div className="bg-zinc-900/70 p-3.5 rounded-xl border border-zinc-800 flex flex-wrap items-center justify-between gap-2 text-zinc-300">
             <div>
