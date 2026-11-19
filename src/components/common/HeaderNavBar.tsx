@@ -63,7 +63,7 @@ export const HeaderNavBar: React.FC = () => {
     try {
       const token = localStorage.getItem('omnicut_jwt');
       if (token) {
-        const payload = JSON.parse(atob(token.split('.')[1]));
+        const parts = token.split('.'); const payload = JSON.parse(atob(parts[1]));
         setIsAdmin(payload?.role === 'admin');
       }
     } catch {}
