@@ -28,7 +28,7 @@ import {
 } from '../../utils/mediaExport';
 
 export const ExportModal: React.FC = () => {
-  const { showExportModal, setShowExportModal, clips, duration, tracks, transcript } = useProject();
+  const { showExportModal, setShowExportModal, clips, duration, tracks, transcript, projectTitle } = useProject();
   const [selectedFormat, setSelectedFormat] = useState<'mp4' | 'webm' | 'wav' | 'srt' | 'vtt' | 'txt' | 'xml' | 'json'>('mp4');
   const [renderProgress, setRenderProgress] = useState<number | null>(null);
   const [completedUrl, setCompletedUrl] = useState<string | null>(null);

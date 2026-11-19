@@ -5,6 +5,9 @@ import pg from 'pg';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+const execFileAsync = promisify(execFile);
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -880,6 +883,110 @@ router.delete(['/projects/:id', '/api/projects/:id'], async (req: Request, res: 
     return res.json({ success: true });
   } catch (err: any) {
     return res.status(500).json({ error: 'Failed to delete project', details: err?.message });
+  }
+});
+
+// Server-Side FFmpeg MP4 / WebM Rendering
+router.post(['/render-mp4', '/api/render-mp4'], async (req: Request, res: Response) => {
+  const { clips = [], format = 'mp4', title = 'OmniCut_Master' } = req.body;
+  const ext = format === 'webm' ? 'webm' : 'mp4';
+  const exportDir = '/home/soul/omnicut-uploads/exports';
+  if (!fs.existsSync(exportDir)) fs.mkdirSync(exportDir, { recursive: true });
+
+  const workDir = `/tmp/omnicut-render-${Date.now()}`;
+  fs.mkdirSync(workDir, { recursive: true });
+
+  try {
+    const videoClips = (Array.isArray(clips) ? clips : [])
+      .filter((c: any) => (c.type === 'video' || c.trackId === 'track-v1') && c.src)
+      .sort((a: any, b: any) => (a.start || 0) - (b.start || 0));
+
+    const segmentFiles: string[] = [];
+
+    for (let i = 0; i < videoClips.length; i++) {
+      const clip = videoClips[i];
+      let inputPath = path.join(workDir, `raw_${i}.mp4`);
+      const normPath = path.join(workDir, `norm_${i}.mp4`);
+      const clipDur = Math.max(1, Number(clip.duration) || 5);
+
+      if (typeof clip.src === 'string' && clip.src.includes('/media/')) {
+        const localFile = path.join('/home/soul/omnicut-uploads', path.basename(clip.src));
+        if (fs.existsSync(localFile)) {
+          inputPath = localFile;
+        }
+      } else if (typeof clip.src === 'string' && clip.src.startsWith('http')) {
+        const resp = await fetch(clip.src);
+        if (resp.ok) {
+          const buf = Buffer.from(await resp.arrayBuffer());
+          fs.writeFileSync(inputPath, buf);
+        }
+      }
+
+      if (fs.existsSync(inputPath)) {
+        await execFileAsync('ffmpeg', [
+          '-y',
+          '-i', inputPath,
+          '-t', String(clipDur),
+          '-vf', 'scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,fps=30,format=yuv420p',
+          '-c:v', 'libx264',
+          '-preset', 'veryfast',
+          '-c:a', 'aac',
+          '-ar', '44100',
+          '-ac', '2',
+          normPath
+        ]);
+        segmentFiles.push(normPath);
+      }
+    }
+
+    const safeTitle = String(title).replace(/[^a-zA-Z0-9_-]/g, '_');
+    const outFileName = `${safeTitle}_${Date.now()}.${ext}`;
+    const outFilePath = path.join(exportDir, outFileName);
+
+    if (segmentFiles.length === 0) {
+      // Render a clean 1080p studio title card video if timeline has no external video files
+      await execFileAsync('ffmpeg', [
+        '-y',
+        '-f', 'lavfi', '-i', 'color=c=#09090b:s=1920x1080:d=5:r=30',
+        '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo',
+        '-t', '5',
+        '-c:v', ext === 'webm' ? 'libvpx-vp9' : 'libx264',
+        '-c:a', ext === 'webm' ? 'libopus' : 'aac',
+        outFilePath
+      ]);
+    } else if (segmentFiles.length === 1) {
+      if (ext === 'mp4') {
+        fs.copyFileSync(segmentFiles[0], outFilePath);
+      } else {
+        await execFileAsync('ffmpeg', ['-y', '-i', segmentFiles[0], '-c:v', 'libvpx-vp9', '-c:a', 'libopus', outFilePath]);
+      }
+    } else {
+      const concatListPath = path.join(workDir, 'concat.txt');
+      fs.writeFileSync(concatListPath, segmentFiles.map(f => `file '${f}'`).join('
+'));
+      await execFileAsync('ffmpeg', [
+        '-y',
+        '-f', 'concat',
+        '-safe', '0',
+        '-i', concatListPath,
+        '-c', ext === 'mp4' ? 'copy' : 'libvpx-vp9',
+        outFilePath
+      ]);
+    }
+
+    const stats = fs.statSync(outFilePath);
+    const baseUrl = process.env.APP_URL || 'https://credibleartisans.com';
+    fs.rmSync(workDir, { recursive: true, force: true });
+
+    return res.json({
+      success: true,
+      url: `${baseUrl}/media/exports/${outFileName}`,
+      fileName: outFileName,
+      sizeBytes: stats.size,
+    });
+  } catch (err: any) {
+    fs.rmSync(workDir, { recursive: true, force: true });
+    return res.status(500).json({ error: 'FFmpeg render failed', details: err?.message });
   }
 });
 
