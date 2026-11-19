@@ -1,11 +1,36 @@
 import express, { Request, Response } from 'express';
 import { GoogleGenAI, Type } from '@google/genai';
+import cors from 'cors';
+import pg from 'pg';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
 export const app = express();
+app.use(cors());
 app.use(express.json({ limit: '50mb' }));
+
+const { Pool } = pg;
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+const uploadDir = '/home/soul/omnicut-uploads';
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, uploadDir),
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  },
+});
+const upload = multer({ storage });
+app.use('/media', express.static(uploadDir));
 
 // Lazy Gemini client helper - avoids crash if GEMINI_API_KEY is not set
 function getAI(): GoogleGenAI | null {
@@ -786,6 +811,78 @@ router.post(['/upload', '/api/upload'], (req: Request, res: Response) => {
 });
 
 // Mount router on both root and /api for maximum hosting compatibility
+// Database Health Check
+router.get(['/db-health', '/api/db-health'], async (_req: Request, res: Response) => {
+  try {
+    const result = await pool.query('SELECT NOW() as time');
+    return res.json({ status: 'ok', database: 'connected', time: result.rows[0].time });
+  } catch (err: any) {
+    return res.status(500).json({ status: 'error', database: 'disconnected', error: err?.message });
+  }
+});
+
+// Local File Upload Endpoint (/api/upload-media)
+router.post(['/upload-media', '/api/upload-media'], upload.single('file'), (req: Request, res: Response) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+  const baseUrl = process.env.APP_URL || 'https://credibleartisans.com';
+  return res.json({
+    success: true,
+    url: `${baseUrl}/media/${req.file.filename}`,
+    relativePath: `/media/${req.file.filename}`,
+    filename: req.file.filename,
+  });
+});
+
+// PostgreSQL Projects CRUD Routes (Replaces Supabase)
+router.get(['/projects', '/api/projects'], async (_req: Request, res: Response) => {
+  try {
+    const result = await pool.query('SELECT * FROM projects ORDER BY updated_at DESC, created_at DESC');
+    return res.json(result.rows);
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch projects', details: err?.message });
+  }
+});
+
+router.post(['/projects', '/api/projects'], async (req: Request, res: Response) => {
+  const { title, timeline_data, media_url } = req.body;
+  try {
+    const result = await pool.query(
+      'INSERT INTO projects (title, timeline_data, media_url) VALUES ($1, $2, $3) RETURNING *',
+      [title || 'Untitled Project', timeline_data || {}, media_url || null]
+    );
+    return res.status(201).json(result.rows[0]);
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to create project', details: err?.message });
+  }
+});
+
+router.put(['/projects/:id', '/api/projects/:id'], async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { title, timeline_data, media_url } = req.body;
+  try {
+    const result = await pool.query(
+      'UPDATE projects SET title = COALESCE($1, title), timeline_data = COALESCE($2, timeline_data), media_url = COALESCE($3, media_url), updated_at = CURRENT_TIMESTAMP WHERE id = $4 RETURNING *',
+      [title, timeline_data, media_url, id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Project not found' });
+    return res.json(result.rows[0]);
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to update project', details: err?.message });
+  }
+});
+
+router.delete(['/projects/:id', '/api/projects/:id'], async (req: Request, res: Response) => {
+  const { id } = req.params;
+  try {
+    await pool.query('DELETE FROM projects WHERE id = $1', [id]);
+    return res.json({ success: true });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to delete project', details: err?.message });
+  }
+});
+
 app.use(router);
 
 // Default export for Vercel Serverless Function
