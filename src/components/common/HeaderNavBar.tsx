@@ -205,7 +205,7 @@ export const HeaderNavBar: React.FC = () => {
             type="text"
             value={projectTitle}
             onChange={(e) => setProjectTitle(e.target.value)}
-            className="w-20 2xl:w-28 px-1.5 py-1 rounded-md bg-zinc-900 border border-zinc-800 focus:border-blue-500 text-zinc-200 text-[11px] outline-none"
+            className="w-16 xl:w-24 px-1.5 py-1 rounded-md bg-zinc-900 border border-zinc-800 focus:border-blue-500 text-zinc-200 text-[11px] outline-none"
             title="Click to rename project"
           />
           <button
@@ -214,7 +214,7 @@ export const HeaderNavBar: React.FC = () => {
             title="Click to save project to HP Laptop PostgreSQL now"
           >
             <Cloud className={`w-3.5 h-3.5 ${cloudSyncStatus === 'synced' ? 'text-emerald-400' : cloudSyncStatus === 'syncing' ? 'text-blue-400 animate-pulse' : 'text-red-400'}`} />
-            <span>{cloudSyncStatus === 'synced' ? 'Saved' : cloudSyncStatus === 'syncing' ? 'Saving...' : 'Offline'}</span>
+            
           </button>
           <button
             onClick={() => setShowProjectsMenu(!showProjectsMenu)}
@@ -222,7 +222,7 @@ export const HeaderNavBar: React.FC = () => {
             title="Load saved project from PostgreSQL"
           >
             <FolderOpen className="w-3.5 h-3.5 text-amber-400" />
-            <span>Projects ({savedProjects.length})</span>
+            <span>Projects</span>
           </button>
 
           {showProjectsMenu && (
