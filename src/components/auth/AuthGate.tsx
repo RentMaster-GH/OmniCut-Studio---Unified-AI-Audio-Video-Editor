@@ -23,6 +23,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const apiBase = (import.meta as any).env?.VITE_API_URL || '';
@@ -65,7 +66,11 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
       if (!res.ok) {
         throw new Error(data.error || 'Authentication failed');
       }
-      if (data.token) {
+      if (status === 'register') {
+        setPassword('');
+        setSuccessMsg('Account created successfully! Please sign in with your new credentials.');
+        setStatus('login');
+      } else if (data.token) {
         localStorage.setItem('omnicut_jwt', data.token);
         setStatus('authenticated');
       }
@@ -127,6 +132,12 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
           </button>
         </div>
 
+        {successMsg && (
+          <div className="p-3 rounded-xl bg-emerald-950/60 border border-emerald-800/80 text-emerald-300 text-xs">
+            {successMsg}
+          </div>
+        )}
+
         {error && (
           <div className="p-3 rounded-xl bg-red-950/60 border border-red-800/80 text-red-300 text-xs">
             {error}
@@ -182,7 +193,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : status === 'register' ? (
               <>
-                <UserPlus className="w-4 h-4" /> Create Account & Enter Studio
+                <UserPlus className="w-4 h-4" /> Create Account
               </>
             ) : (
               <>
