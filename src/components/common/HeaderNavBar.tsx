@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useProject } from "../../context/ProjectContext";
 import {
   Film,
@@ -20,6 +20,8 @@ import {
   VolumeX,
   Dna,
   Cpu,
+  FolderOpen,
+  Check,
 } from 'lucide-react';
 
 export const HeaderNavBar: React.FC = () => {
@@ -32,6 +34,11 @@ export const HeaderNavBar: React.FC = () => {
     setShowShortcutsModal,
     collaborators,
     cloudSyncStatus,
+    syncNow,
+    projectTitle,
+    setProjectTitle,
+    savedProjects,
+    loadSavedProject,
     isEndToEndEncrypted,
     isBiometricLocked,
     masterVolume,
@@ -39,6 +46,7 @@ export const HeaderNavBar: React.FC = () => {
     theme,
     setTheme,
   } = useProject();
+  const [showProjectsMenu, setShowProjectsMenu] = useState(false);
 
   return (
     <header className="w-full bg-zinc-950/95 border-b border-zinc-800/80 px-4 py-2.5 flex items-center justify-between text-xs text-zinc-300 backdrop-blur-md sticky top-0 z-40 select-none">
@@ -165,14 +173,59 @@ export const HeaderNavBar: React.FC = () => {
           <span className="text-[11px] font-mono">E2EE Locked</span>
         </button>
 
-        <button
-          onClick={() => setShowSecurityModal(true)}
-          className="hidden lg:flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 text-[11px]"
-          title="Cloud Backup Status"
-        >
-          <Cloud className="w-3.5 h-3.5 text-blue-400" />
-          <span>{cloudSyncStatus === 'synced' ? 'Cloud Synced' : 'Syncing...'}</span>
-        </button>
+                {/* Live PostgreSQL Sync & Saved Projects */}
+        <div className="relative hidden lg:flex items-center gap-1.5">
+          <input
+            type="text"
+            value={projectTitle}
+            onChange={(e) => setProjectTitle(e.target.value)}
+            className="w-36 px-2 py-1 rounded-lg bg-zinc-900 border border-zinc-800 focus:border-blue-500 text-zinc-200 text-[11px] outline-none"
+            title="Click to rename project"
+          />
+          <button
+            onClick={() => syncNow()}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-blue-600 text-zinc-300 text-[11px] transition"
+            title="Click to save project to HP Laptop PostgreSQL now"
+          >
+            <Cloud className={`w-3.5 h-3.5 ${cloudSyncStatus === 'synced' ? 'text-emerald-400' : cloudSyncStatus === 'syncing' ? 'text-blue-400 animate-pulse' : 'text-red-400'}`} />
+            <span>{cloudSyncStatus === 'synced' ? 'Saved to DB' : cloudSyncStatus === 'syncing' ? 'Saving...' : 'Offline'}</span>
+          </button>
+          <button
+            onClick={() => setShowProjectsMenu(!showProjectsMenu)}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 text-[11px] transition"
+            title="Load saved project from PostgreSQL"
+          >
+            <FolderOpen className="w-3.5 h-3.5 text-amber-400" />
+            <span>Projects ({savedProjects.length})</span>
+          </button>
+
+          {showProjectsMenu && (
+            <div className="absolute right-0 top-9 w-64 bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl p-2 z-50">
+              <div className="text-[10px] uppercase tracking-wider text-zinc-400 px-2 py-1 font-semibold">
+                HP Laptop PostgreSQL Projects
+              </div>
+              {savedProjects.length === 0 ? (
+                <div className="text-xs text-zinc-500 px-2 py-3">No saved projects yet.</div>
+              ) : (
+                <div className="max-h-60 overflow-y-auto space-y-1">
+                  {savedProjects.map((proj) => (
+                    <button
+                      key={proj.id}
+                      onClick={() => {
+                        loadSavedProject(proj);
+                        setShowProjectsMenu(false);
+                      }}
+                      className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-zinc-800 text-xs text-zinc-200 flex items-center justify-between"
+                    >
+                      <span className="truncate">{proj.title}</span>
+                      <span className="text-[10px] text-zinc-500 ml-2">#{proj.id}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Live Collaborators Stack */}
         <div

@@ -105,7 +105,13 @@ interface ProjectContextType {
   isEndToEndEncrypted: boolean;
   encryptionFingerprint: string;
   cloudSyncStatus: 'synced' | 'syncing' | 'offline';
-  syncNow: () => void;
+  syncNow: () => Promise<void>;
+  projectTitle: string;
+  setProjectTitle: React.Dispatch<React.SetStateAction<string>>;
+  currentProjectId: number | null;
+  savedProjects: any[];
+  loadSavedProject: (project: any) => void;
+  refreshSavedProjects: () => Promise<void>;
   avatars: AIAvatarProfile[];
   selectedAvatar: AIAvatarProfile | null;
   setSelectedAvatar: (avatar: AIAvatarProfile | null) => void;
@@ -829,10 +835,96 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setIsPlaying(false);
   }, []);
 
-  const syncNow = useCallback(() => {
-    setCloudSyncStatus('syncing');
-    setTimeout(() => setCloudSyncStatus('synced'), 1200);
+    const [projectTitle, setProjectTitle] = useState<string>("Untitled Studio Project");
+  const [currentProjectId, setCurrentProjectId] = useState<number | null>(null);
+  const [savedProjects, setSavedProjects] = useState<any[]>([]);
+  const isInitialMount = useRef(true);
+
+  const apiBase = (import.meta as any).env?.VITE_API_URL || "";
+
+  const refreshSavedProjects = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiBase}/api/projects`);
+      if (res.ok) {
+        const list = await res.json();
+        setSavedProjects(Array.isArray(list) ? list : []);
+      }
+    } catch (err) {
+      console.warn("Could not fetch saved projects:", err);
+    }
+  }, [apiBase]);
+
+  const syncNow = useCallback(async () => {
+    setCloudSyncStatus("syncing");
+    try {
+      const payload = {
+        title: projectTitle,
+        timeline_data: {
+          tracks,
+          clips,
+          transcript,
+          aspectRatio,
+          captionStyle,
+          colorGrading,
+        },
+      };
+      const url = currentProjectId
+        ? `${apiBase}/api/projects/${currentProjectId}`
+        : `${apiBase}/api/projects`;
+      const method = currentProjectId ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        const saved = await res.json();
+        if (!currentProjectId && saved?.id) {
+          setCurrentProjectId(saved.id);
+        }
+        setCloudSyncStatus("synced");
+        refreshSavedProjects();
+      } else {
+        setCloudSyncStatus("offline");
+      }
+    } catch (err) {
+      console.warn("PostgreSQL sync error:", err);
+      setCloudSyncStatus("offline");
+    }
+  }, [apiBase, projectTitle, currentProjectId, tracks, clips, transcript, aspectRatio, captionStyle, colorGrading, refreshSavedProjects]);
+
+  const loadSavedProject = useCallback((project: any) => {
+    if (!project) return;
+    setCurrentProjectId(project.id);
+    setProjectTitle(project.title || "Untitled Studio Project");
+    const td = project.timeline_data || {};
+    if (Array.isArray(td.tracks)) setTracks(td.tracks);
+    if (Array.isArray(td.clips)) setClips(td.clips);
+    if (Array.isArray(td.transcript)) setTranscript(td.transcript);
+    if (td.aspectRatio) setAspectRatio(td.aspectRatio);
+    if (td.captionStyle) setCaptionStyle(td.captionStyle);
+    if (td.colorGrading) setColorGrading(td.colorGrading);
+    setCloudSyncStatus("synced");
   }, []);
+
+  // Load project list on startup
+  useEffect(() => {
+    refreshSavedProjects();
+  }, [refreshSavedProjects]);
+
+  // Debounced auto-save 3 seconds after edits
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      syncNow();
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [tracks, clips, projectTitle, syncNow]);
 
   const deployAvatarToTimeline = useCallback((config: {
     avatar: AIAvatarProfile;
@@ -1044,6 +1136,12 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         encryptionFingerprint,
         cloudSyncStatus,
         syncNow,
+        projectTitle,
+        setProjectTitle,
+        currentProjectId,
+        savedProjects,
+        loadSavedProject,
+        refreshSavedProjects,
         avatars,
         selectedAvatar,
         setSelectedAvatar,
