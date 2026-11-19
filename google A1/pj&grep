@@ -1,0 +1,134 @@
+soul@soul-HP-EliteBook-Folio-1040-G3:~$ cd ~
+rm -rf ~/omnicut-studio
+REPO_URL=$(printf 'https://%s/%s/%s.git' 'github.com' 'RentMaster-GH' 'OmniCut-Studio---Unified-AI-Audio-Video-Editor')
+git clone "$REPO_URL" ~/omnicut-studio && cd ~/omnicut-studio
+ls -la
+cat package.json
+grep -rn "supabase\|firebase\|createClient\|DATABASE_URL\|VITE_\|NEXT_PUBLIC_\|localStorage\|GEMINI_API_KEY\|/api/" src/ app/ api/ lib/ components/ server* .env* 2>/dev/null | head -n 45
+Cloning into '/home/soul/omnicut-studio'...
+remote: Enumerating objects: 1861, done.
+remote: Counting objects: 100% (378/378), done.
+remote: Compressing objects: 100% (232/232), done.
+remote: Total 1861 (delta 266), reused 235 (delta 134), pack-reused 1483 (from 2)
+Receiving objects: 100% (1861/1861), 970.02 KiB | 494.00 KiB/s, done.
+Resolving deltas: 100% (1037/1037), done.
+total 388
+drwx------ 11 soul soul   4096 Nov 19 14:40 .
+drwxr-x--- 33 soul soul   4096 Nov 19 14:40 ..
+-rw-------  1 soul soul    372 Nov 19 14:40 .env.local
+drwx------  7 soul soul   4096 Nov 19 14:40 .git
+drwx------  3 soul soul   4096 Nov 19 14:40 .github
+-rw-------  1 soul soul    263 Nov 19 14:40 .gitignore
+-rw-------  1 soul soul     22 Nov 19 14:40 .npmrc
+-rw-------  1 soul soul     82 Nov 19 14:40 .omnicut_key.json
+-rw-------  1 soul soul    542 Nov 19 14:40 README.md
+drwx------  3 soul soul   4096 Nov 19 14:40 api
+drwx------  3 soul soul   4096 Nov 19 14:40 app
+drwx------  2 soul soul   4096 Nov 19 14:40 components
+-rw-------  1 soul soul    445 Nov 19 14:40 env.example
+-rw-------  1 soul soul   1423 Nov 19 14:40 index.html
+-rw-------  1 soul soul  25307 Nov 19 14:40 index.ts
+drwx------  2 soul soul   4096 Nov 19 14:40 lib
+-rw-------  1 soul soul    401 Nov 19 14:40 metadata.json
+-rw-------  1 soul soul 243176 Nov 19 14:40 package-lock.json
+-rw-------  1 soul soul    956 Nov 19 14:40 package.json
+-rw-------  1 soul soul     80 Nov 19 14:40 postcss.config.js
+drwx------  3 soul soul   4096 Nov 19 14:40 self-hosted-video
+drwx------  2 soul soul   4096 Nov 19 14:40 server
+-rw-------  1 soul soul    936 Nov 19 14:40 server.ts
+drwx------  8 soul soul   4096 Nov 19 14:40 src
+-rw-------  1 soul soul    175 Nov 19 14:40 tailwind.config.js
+-rw-------  1 soul soul    342 Nov 19 14:40 test-free-proxy.ts
+-rw-------  1 soul soul    347 Nov 19 14:40 test-free.js
+-rw-------  1 soul soul    565 Nov 19 14:40 tsconfig.json
+-rw-------  1 soul soul    758 Nov 19 14:40 types.ts
+-rw-------  1 soul soul    334 Nov 19 14:40 vercel
+-rw-------  1 soul soul    167 Nov 19 14:40 vercel.json
+-rw-------  1 soul soul    421 Nov 19 14:40 vite.config.ts
+{
+  "name": "react-example",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx server.ts",
+    "start": "tsx server.ts",
+    "build": "vite build",
+    "preview": "vite preview",
+    "clean": "rm -rf dist server.js",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@google/genai": "^2.4.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@vitejs/plugin-react": "^6.1.1",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "lucide-react": "^0.546.0",
+    "motion": "^12.23.24",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1",
+    "vite": "^8.3.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vercel/node": "^25.0.0",
+    "autoprefixer": "^10.6.1",
+    "esbuild": "^0.25.0",
+    "postcss": "^8.5.31",
+    "tailwindcss": "^3.4.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
+src/context/ProjectContext.tsx:470:        const resp = await fetch('/api/ai/generate-script', {
+src/components/FreeProxyBadge.tsx:11:      let k = localStorage.getItem('omnicut_free_key');
+src/components/FreeProxyBadge.tsx:14:        localStorage.setItem('omnicut_free_key', k);
+src/components/FreeProxyBadge.tsx:15:        localStorage.setItem('omnicut_credits', '100');
+src/components/FreeProxyBadge.tsx:17:      const c = parseInt(localStorage.getItem('omnicut_credits') || '100');
+src/components/captions/CaptionsStudio.tsx:118:      const response = await fetch('/api/ai/generate-captions', {
+src/components/invideo/AIStudioGenerator.tsx:15:      const REAL_GATEWAY = "https://pollination-ai-decentralized-inference-gateway.vercel.app/api/video/generate";
+src/app/api/webhooks/replicate/route.ts:2:import { createClient } from '@supabase/supabase-js';
+src/app/api/webhooks/replicate/route.ts:4:const supabase = createClient(process.env.SUPABASE_URL || '', process.env.SUPABASE_ANON_KEY || '');
+src/app/api/webhooks/replicate/route.ts:20:      await supabase
+src/app/api/upload/route.ts:3:import { createClient } from '@supabase/supabase-js';
+src/app/api/upload/route.ts:6:const supabaseUrl = process.env.SUPABASE_URL || '';
+src/app/api/upload/route.ts:7:const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || '';
+src/app/api/upload/route.ts:8:const supabase = createClient(supabaseUrl, supabaseAnonKey);
+src/app/api/upload/route.ts:38:    const { data: dbRecord, error: dbError } = await supabase
+src/app/api/ai/generate-script/route.ts:14:    // Use GEMINI_API_KEY or GENERATIVE_AI_KEY
+src/app/api/ai/generate-script/route.ts:15:    const apiKey = process.env.GEMINI_API_KEY || process.env.GENERATIVE_AI_KEY;
+src/app/api/ai/batch-generate/route.ts:2:import { createClient } from '@supabase/supabase-js';
+src/app/api/ai/batch-generate/route.ts:4:const supabase = createClient(process.env.SUPABASE_URL || '', process.env.SUPABASE_ANON_KEY || '');
+src/app/api/ai/batch-generate/route.ts:43:      const { data: clipPlaceholder } = await supabase
+src/app/api/ai/batch-generate/route.ts:73:          webhook: `${appUrl}/api/webhooks/replicate?clipId=${clipPlaceholder.id}&sceneIndex=${scene.sceneIndex}&projectId=${projectId}`,
+src/app/api/ai/segment-script/route.ts:11:    const apiKey = process.env.GEMINI_API_KEY;
+src/lib/realisticVideo.ts:2:  const REAL_URL = "https://pollination-ai-decentralized-inference-gateway.vercel.app/api/video/generate";
+src/lib/freeProxy.ts:2:export function getOmniKey(){ try{return localStorage.getItem('omnicut_free_key')||'';}catch{return'';} }
+src/lib/freeProxy.ts:3:export function setOmniKey(k:string){ try{localStorage.setItem('omnicut_free_key',k);}catch{} }
+src/lib/freeProxy.ts:4:export function getCredits(){ try{return parseInt(localStorage.getItem('omnicut_credits')||'100');}catch{return 100;} }
+src/lib/freeProxy.ts:7:  const url = `${PROXY_BASE}/api/video?prompt=${encoded}&redirect=true&t=${Date.now()}`;
+src/lib/freeProxy.ts:12:  return `${PROXY_BASE}/api/video?prompt=${encodeURIComponent(p)}&redirect=true`;
+app/api/generate-video/.env.local:1:GEMINI_API_KEY="AIzaSyCMfh-_cKXfMz4vBnxSJ0DUWrkg2KXKrZM"
+app/api/generate-video/.env.local:4:SUPABASE_URL="https://jvdgoeezzhtjbpzfjltv.supabase.co"
+api/index.tsx:10:// Lazy Gemini client helper - avoids crash if GEMINI_API_KEY is not set
+api/index.tsx:12:  const apiKey = process.env.GEMINI_API_KEY;
+api/index.tsx:27:router.get(['/health', '/api/health'], (req: Request, res: Response) => {
+api/index.tsx:31:    geminiConfigured: !!process.env.GEMINI_API_KEY,
+api/index.tsx:37:router.post(['/ai/generate-script', '/api/ai/generate-script'], async (req: Request, res: Response) => {
+api/index.tsx:561:router.post(['/ai/transcribe-edit', '/api/ai/transcribe-edit'], async (req: Request, res: Response) => {
+api/index.tsx:642:router.post(['/ai/tts', '/api/ai/tts'], async (req: Request, res: Response) => {
+api/index.tsx:698:router.post(['/ai/generate-captions', '/api/ai/generate-captions'], async (req: Request, res: Response) => {
+api/index.tsx:753:router.post(['/render-job', '/api/render-job'], (req: Request, res: Response) => {
+api/index.tsx:771:router.post(['/upload', '/api/upload'], (req: Request, res: Response) => {
+api/ai/generate-video.js:13:    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+api/ai/optimize-hook/route.ts:7:    const apiKey = process.env.GEMINI_API_KEY;
+api/ai/generate-script.js:20:    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+api/ai/fetch-real-video.js:12:    const coverrRes = await fetch(`https://coverr.co/api/videos?query=${encodeURIComponent(prompt)}&page=0`);
+api/ai/fetch-real-video.js:28:    // Get key here: https://pixabay.com/api/docs/ -> 1 click
+soul@soul-HP-EliteBook-Folio-1040-G3:~/omnicut-studio$ 
+
+

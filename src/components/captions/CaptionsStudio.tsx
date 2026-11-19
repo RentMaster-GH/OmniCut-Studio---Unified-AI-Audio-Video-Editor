@@ -115,7 +115,7 @@ export const CaptionsStudio: React.FC = () => {
   const handleAIGenerate = async () => {
     setIsGenerating(true);
     try {
-      const response = await fetch('/api/ai/generate-captions', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/ai/generate-captions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

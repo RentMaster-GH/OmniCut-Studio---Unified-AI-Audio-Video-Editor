@@ -467,7 +467,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       let scriptData: any = null;
       try {
-        const resp = await fetch('/api/ai/generate-script', {
+        const resp = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/ai/generate-script`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ prompt, tone, format, mode, image, duration: durationPreset, realism: realismStyle }),
