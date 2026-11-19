@@ -118,10 +118,36 @@ router.post(['/auth/setup', '/api/auth/setup'], async (req: Request, res: Respon
       [email.toLowerCase().trim(), pwHash, name || 'Studio Owner']
     );
     const user = insertRes.rows[0];
-    const token = signJwt({ userId: user.id, email: user.email, name: user.name });
+    const token = signJwt({ userId: user.id, email: user.email, name: user.name, role: user.role || 'user' });
     return res.status(201).json({ token, user });
   } catch (err: any) {
     return res.status(500).json({ error: err?.message || 'Setup failed' });
+  }
+});
+
+router.post(['/auth/register', '/api/auth/register'], async (req: Request, res: Response) => {
+  const { email, password, name } = req.body;
+  if (!email || !password || password.length < 6) {
+    return res.status(400).json({ error: 'Email and a password of at least 6 characters are required.' });
+  }
+  try {
+    const cleanEmail = email.toLowerCase().trim();
+    const exists = await pool.query('SELECT id FROM users WHERE email = $1', [cleanEmail]);
+    if (exists.rows.length > 0) {
+      return res.status(409).json({ error: 'An account with this email already exists. Please sign in.' });
+    }
+    const countRes = await pool.query('SELECT COUNT(*)::int AS count FROM users');
+    const role = (countRes.rows[0]?.count || 0) === 0 ? 'admin' : 'user';
+    const pwHash = hashPassword(password);
+    const insertRes = await pool.query(
+      'INSERT INTO users (email, password_hash, name, role) VALUES ($1, $2, $3, $4) RETURNING id, email, name, role',
+      [cleanEmail, pwHash, name || cleanEmail.split('@')[0], role]
+    );
+    const user = insertRes.rows[0];
+    const token = signJwt({ userId: user.id, email: user.email, name: user.name, role: user.role });
+    return res.status(201).json({ token, user });
+  } catch (err: any) {
+    return res.status(500).json({ error: err?.message || 'Registration failed' });
   }
 });
 
@@ -152,7 +178,7 @@ router.get(['/auth/me', '/api/auth/me'], (req: Request, res: Response) => {
 });
 
 router.use((req: Request, res: Response, next) => {
-  const publicPaths = ['/health', '/api/health', '/db-health', '/api/db-health', '/auth/status', '/api/auth/status', '/auth/setup', '/api/auth/setup', '/auth/login', '/api/auth/login'];
+  const publicPaths = ['/health', '/api/health', '/db-health', '/api/db-health', '/auth/status', '/api/auth/status', '/auth/setup', '/api/auth/setup', '/auth/register', '/api/auth/register', '/auth/login', '/api/auth/login'];
   if (publicPaths.includes(req.path)) {
     return next();
   }
@@ -956,7 +982,8 @@ router.post(['/upload-media', '/api/upload-media'], upload.single('file'), (req:
 // PostgreSQL Projects CRUD Routes (Replaces Supabase)
 router.get(['/projects', '/api/projects'], async (_req: Request, res: Response) => {
   try {
-    const result = await pool.query('SELECT * FROM projects ORDER BY updated_at DESC, created_at DESC');
+    const userId = (req as any).user?.userId;
+    const result = await pool.query('SELECT * FROM projects WHERE user_id = $1 ORDER BY updated_at DESC, created_at DESC', [userId]);
     return res.json(result.rows);
   } catch (err: any) {
     return res.status(500).json({ error: 'Failed to fetch projects', details: err?.message });
@@ -965,10 +992,18 @@ router.get(['/projects', '/api/projects'], async (_req: Request, res: Response) 
 
 router.post(['/projects', '/api/projects'], async (req: Request, res: Response) => {
   const { title, timeline_data, media_url } = req.body;
+  const userId = (req as any).user?.userId;
+  const role = (req as any).user?.role || 'user';
   try {
+    if (role !== 'admin') {
+      const cnt = await pool.query('SELECT COUNT(*)::int AS count FROM projects WHERE user_id = $1', [userId]);
+      if ((cnt.rows[0]?.count || 0) >= 5) {
+        return res.status(403).json({ error: 'Free user limit reached (5 projects max). Delete an existing project first.' });
+      }
+    }
     const result = await pool.query(
-      'INSERT INTO projects (title, timeline_data, media_url) VALUES ($1, $2, $3) RETURNING *',
-      [title || 'Untitled Project', timeline_data || {}, media_url || null]
+      'INSERT INTO projects (title, timeline_data, media_url, user_id) VALUES ($1, $2, $3, $4) RETURNING *',
+      [title || 'Untitled Project', timeline_data || {}, media_url || null, userId]
     );
     return res.status(201).json(result.rows[0]);
   } catch (err: any) {
@@ -981,8 +1016,8 @@ router.put(['/projects/:id', '/api/projects/:id'], async (req: Request, res: Res
   const { title, timeline_data, media_url } = req.body;
   try {
     const result = await pool.query(
-      'UPDATE projects SET title = COALESCE($1, title), timeline_data = COALESCE($2, timeline_data), media_url = COALESCE($3, media_url), updated_at = CURRENT_TIMESTAMP WHERE id = $4 RETURNING *',
-      [title, timeline_data, media_url, id]
+      'UPDATE projects SET title = COALESCE($1, title), timeline_data = COALESCE($2, timeline_data), media_url = COALESCE($3, media_url), updated_at = CURRENT_TIMESTAMP WHERE id = $4 AND user_id = $5 RETURNING *',
+      [title, timeline_data, media_url, id, (req as any).user?.userId]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Project not found' });
     return res.json(result.rows[0]);
@@ -994,7 +1029,7 @@ router.put(['/projects/:id', '/api/projects/:id'], async (req: Request, res: Res
 router.delete(['/projects/:id', '/api/projects/:id'], async (req: Request, res: Response) => {
   const { id } = req.params;
   try {
-    await pool.query('DELETE FROM projects WHERE id = $1', [id]);
+    await pool.query('DELETE FROM projects WHERE id = $1 AND user_id = $2', [id, (req as any).user?.userId]);
     return res.json({ success: true });
   } catch (err: any) {
     return res.status(500).json({ error: 'Failed to delete project', details: err?.message });

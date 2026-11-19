@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Lock, ShieldCheck, Loader2, LogIn, UserPlus } from 'lucide-react';
 
-// Automatically attach stored JWT token to all backend API calls
 const originalFetch = window.fetch.bind(window);
 window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
   const token = localStorage.getItem('omnicut_jwt');
@@ -19,10 +18,10 @@ window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
 };
 
 export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [status, setStatus] = useState<'checking' | 'setup' | 'login' | 'authenticated'>('checking');
+  const [status, setStatus] = useState<'checking' | 'login' | 'register' | 'authenticated'>('checking');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('Studio Owner');
+  const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -42,21 +41,10 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
           }
           localStorage.removeItem('omnicut_jwt');
         } catch {
-          // Proceed to status check
+          // Proceed to login
         }
       }
-
-      try {
-        const statusRes = await originalFetch(`${apiBase}/api/auth/status`);
-        if (statusRes.ok) {
-          const data = await statusRes.json();
-          setStatus(data.initialized ? 'login' : 'setup');
-        } else {
-          setStatus('login');
-        }
-      } catch {
-        setStatus('login');
-      }
+      setStatus('login');
     };
     checkSession();
   }, [apiBase]);
@@ -66,7 +54,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
     setError(null);
     setSubmitting(true);
 
-    const endpoint = status === 'setup' ? '/api/auth/setup' : '/api/auth/login';
+    const endpoint = status === 'register' ? '/api/auth/register' : '/api/auth/login';
     try {
       const res = await originalFetch(`${apiBase}${endpoint}`, {
         method: 'POST',
@@ -93,7 +81,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
       <div className="min-h-screen bg-zinc-950 text-zinc-200 flex items-center justify-center">
         <div className="flex items-center gap-2.5 text-sm">
           <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
-          <span>Verifying HP Laptop Studio Session...</span>
+          <span>Loading OmniCut Studio...</span>
         </div>
       </div>
     );
@@ -112,14 +100,31 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
           </div>
           <div>
             <h1 className="text-base font-bold text-white">
-              {status === 'setup' ? 'Initialize Studio Owner Account' : 'OmniCut Studio Private Access'}
+              {status === 'register' ? 'Create OmniCut Studio Account' : 'Sign In to OmniCut Studio'}
             </h1>
             <p className="text-xs text-zinc-400">
-              {status === 'setup'
-                ? 'Create your admin login. Public registration locks permanently afterward.'
-                : 'Sign in to unlock your HP Laptop PostgreSQL & FFmpeg backend'}
+              {status === 'register'
+                ? 'Register a workspace to edit videos, generate AI audio, and save projects.'
+                : 'Access your cloud timeline, AI tools, and media workspace'}
             </p>
           </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-zinc-950 border border-zinc-800 text-xs">
+          <button
+            type="button"
+            onClick={() => { setStatus('login'); setError(null); }}
+            className={`py-1.5 rounded-lg font-semibold transition ${status === 'login' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-200'}`}
+          >
+            Sign In
+          </button>
+          <button
+            type="button"
+            onClick={() => { setStatus('register'); setError(null); }}
+            className={`py-1.5 rounded-lg font-semibold transition ${status === 'register' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-200'}`}
+          >
+            Create Account
+          </button>
         </div>
 
         {error && (
@@ -129,12 +134,13 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
         )}
 
         <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
-          {status === 'setup' && (
+          {status === 'register' && (
             <div>
-              <label className="block text-zinc-300 font-medium mb-1">Owner Name</label>
+              <label className="block text-zinc-300 font-medium mb-1">Display Name</label>
               <input
                 type="text"
                 required
+                placeholder="Creator Name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 focus:border-blue-500 text-white outline-none"
@@ -143,7 +149,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
           )}
 
           <div>
-            <label className="block text-zinc-300 font-medium mb-1">Admin Email</label>
+            <label className="block text-zinc-300 font-medium mb-1">Email Address</label>
             <input
               type="email"
               required
@@ -174,13 +180,13 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
           >
             {submitting ? (
               <Loader2 className="w-4 h-4 animate-spin" />
-            ) : status === 'setup' ? (
+            ) : status === 'register' ? (
               <>
-                <UserPlus className="w-4 h-4" /> Create Owner & Lock Studio
+                <UserPlus className="w-4 h-4" /> Create Account & Enter Studio
               </>
             ) : (
               <>
-                <LogIn className="w-4 h-4" /> Unlock OmniCut Studio
+                <LogIn className="w-4 h-4" /> Sign In to Studio
               </>
             )}
           </button>
@@ -188,9 +194,9 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
         <div className="pt-2 border-t border-zinc-800/80 flex items-center justify-between text-[11px] text-zinc-500">
           <span className="flex items-center gap-1">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> HS256 JWT Protected
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Multi-User JWT Workspace
           </span>
-          <span>HP-EliteBook-1040-G3</span>
+          <span>OmniCut Studio</span>
         </div>
       </div>
     </div>
