@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useProject } from "../../context/ProjectContext";
 import { Sparkles, Film } from 'lucide-react';
 
-export default function AIStudioGenerator() {
+export function AIStudioGenerator() {
   const [prompt, setPrompt] = useState("person cooking jollof in ghana cinematic");
   const [videoUrl, setVideoUrl] = useState("");
   const [status, setStatus] = useState("");
@@ -42,3 +42,5 @@ export default function AIStudioGenerator() {
     </div>
   );
 }
+
+export default AIStudioGenerator;
