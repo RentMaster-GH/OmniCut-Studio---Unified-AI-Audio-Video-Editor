@@ -990,6 +990,40 @@ router.post(['/render-mp4', '/api/render-mp4'], async (req: Request, res: Respon
   }
 });
 
+// List Saved Laptop Media Files (/api/media-library)
+router.get(['/media-library', '/api/media-library'], (_req: Request, res: Response) => {
+  try {
+    const dir = '/home/soul/omnicut-uploads';
+    if (!fs.existsSync(dir)) return res.json([]);
+    const baseUrl = process.env.APP_URL || 'https://credibleartisans.com';
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    const files = entries
+      .filter((e) => e.isFile() && /.(mp4|webm|mov|mkv|m4v|mp3|wav|ogg|m4a|aac|flac|png|jpg|jpeg|webp|gif)$/i.test(e.name))
+      .map((e) => {
+        const fullPath = path.join(dir, e.name);
+        const stat = fs.statSync(fullPath);
+        const ext = path.extname(e.name).toLowerCase();
+        const type = /.(mp4|webm|mov|mkv|m4v)$/.test(ext)
+          ? 'video'
+          : /.(mp3|wav|ogg|m4a|aac|flac)$/.test(ext)
+          ? 'audio'
+          : 'image';
+        return {
+          name: e.name,
+          type,
+          sizeBytes: stat.size,
+          sizeLabel: `${(stat.size / (1024 * 1024)).toFixed(2)} MB`,
+          url: `${baseUrl}/media/${e.name}`,
+          createdAt: stat.mtime,
+        };
+      })
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return res.json(files);
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to list media library', details: err?.message });
+  }
+});
+
 app.use(router);
 
 // Default export for Vercel Serverless Function

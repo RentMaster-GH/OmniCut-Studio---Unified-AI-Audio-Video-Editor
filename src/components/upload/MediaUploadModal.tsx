@@ -32,7 +32,78 @@ export const MediaUploadModal: React.FC = () => {
     seek,
   } = useProject();
 
-  const [activeTab, setActiveLocalTab] = useState<'upload' | 'samples' | 'script'>('upload');
+  const [activeTab, setActiveLocalTab] = useState<'upload' | 'library' | 'samples' | 'script'>('upload');
+  const [libraryFiles, setLibraryFiles] = useState<any[]>([]);
+  const [loadingLibrary, setLoadingLibrary] = useState(false);
+
+  const fetchLaptopLibrary = async () => {
+    setLoadingLibrary(true);
+    const apiBase = (import.meta as any).env?.VITE_API_URL || "";
+    try {
+      const res = await fetch(`${apiBase}/api/media-library`);
+      if (res.ok) {
+        const data = await res.json();
+        setLibraryFiles(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.warn("Could not load laptop media library:", err);
+    } finally {
+      setLoadingLibrary(false);
+    }
+  };
+
+  const handleAddLibraryItem = (item: any) => {
+    const cleanTitle = item.name.replace(/^d+-d+-?/, "").replace(/.[^/.]+$/, "") || item.name;
+    if (item.type === "video") {
+      const maxStart = clips.reduce((acc, c) => Math.max(acc, c.start + c.duration), 0);
+      addClip({
+        id: `clip-lib-v1-${Date.now()}`,
+        trackId: "track-v1",
+        title: cleanTitle,
+        type: "video",
+        start: maxStart,
+        duration: 8,
+        volume: 1,
+        speed: 1,
+        muted: false,
+        color: "#2563EB",
+        src: item.url,
+        text: `⚡ ${cleanTitle.toUpperCase()}`,
+      } as any);
+      showToast(`Added "${cleanTitle}" from HP Laptop to Track V1!`);
+    } else if (item.type === "audio") {
+      const maxStart = clips.filter(c => c.trackId === "track-a1").reduce((acc, c) => Math.max(acc, c.start + c.duration), 0);
+      addClip({
+        id: `clip-lib-a1-${Date.now()}`,
+        trackId: "track-a1",
+        title: `Audio: ${cleanTitle}`,
+        type: "audio",
+        start: maxStart,
+        duration: 10,
+        volume: 1,
+        speed: 1,
+        muted: false,
+        color: "#10B981",
+        src: item.url,
+      } as any);
+      showToast(`Added "${cleanTitle}" from HP Laptop to Track A1!`);
+    } else {
+      addClip({
+        id: `clip-lib-v2-${Date.now()}`,
+        trackId: "track-v2",
+        title: `Overlay: ${cleanTitle}`,
+        type: "overlay",
+        start: 0,
+        duration: 6,
+        volume: 1,
+        speed: 1,
+        muted: false,
+        color: "#EC4899",
+        src: item.url,
+      } as any);
+      showToast(`Added "${cleanTitle}" from HP Laptop to Track V2!`);
+    }
+  };
   const [dragOver, setDragOver] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<
     {
@@ -408,6 +479,20 @@ export const MediaUploadModal: React.FC = () => {
           >
             <FolderOpen className="w-3.5 h-3.5" />
             Upload Files (Video, Audio, Docs)
+          </button>
+          <button
+            onClick={() => {
+              setActiveLocalTab('library');
+              fetchLaptopLibrary();
+            }}
+            className={`px-3 py-1.5 rounded-t-lg text-xs font-semibold flex items-center gap-1.5 transition ${
+              activeTab === 'library'
+                ? 'bg-zinc-950 text-emerald-400 border-t-2 border-emerald-500'
+                : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            My Laptop Media
           </button>
 
           <button
