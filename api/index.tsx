@@ -5,6 +5,7 @@ import pg from 'pg';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 const execFileAsync = promisify(execFile);
@@ -34,6 +35,122 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 app.use('/media', express.static(uploadDir));
+
+// --- JWT & Password Hashing Helpers (Zero External Dependencies) ---
+const JWT_SECRET = process.env.JWT_SECRET || process.env.DATABASE_URL || 'omnicut-hp-elitebook-secret-key-2026';
+
+function hashPassword(password: string): string {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password: string, stored: string): boolean {
+  const [salt, key] = stored.split(':');
+  if (!salt || !key) return false;
+  const hashBuffer = crypto.scryptSync(password, salt, 64);
+  const keyBuffer = Buffer.from(key, 'hex');
+  return crypto.timingSafeEqual(hashBuffer, keyBuffer);
+}
+
+function signJwt(payload: object): string {
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+  const body = Buffer.from(JSON.stringify({ ...payload, exp: Math.floor(Date.now() / 1000) + 7 * 86400 })).toString('base64url');
+  const sig = crypto.createHmac('sha256', JWT_SECRET).update(`${header}.${body}`).digest('base64url');
+  return `${header}.${body}.${sig}`;
+}
+
+function verifyJwt(token: string): any | null {
+  try {
+    const [header, body, sig] = token.split('.');
+    if (!header || !body || !sig) return null;
+    const expected = crypto.createHmac('sha256', JWT_SECRET).update(`${header}.${body}`).digest('base64url');
+    if (sig !== expected) return null;
+    const data = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+    if (data.exp && data.exp < Math.floor(Date.now() / 1000)) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+// Check if Owner Account Exists
+router.get(['/auth/status', '/api/auth/status'], async (_req: Request, res: Response) => {
+  try {
+    const result = await pool.query('SELECT COUNT(*)::int AS count FROM users');
+    return res.json({ initialized: (result.rows?.count || 0) > 0 });
+  } catch (err: any) {
+    return res.status(500).json({ error: err?.message });
+  }
+});
+
+// One-Time Owner Registration (Automatically locks once owner exists)
+router.post(['/auth/setup', '/api/auth/setup'], async (req: Request, res: Response) => {
+  const { email, password, name } = req.body;
+  if (!email || !password || password.length < 6) {
+    return res.status(400).json({ error: 'Email and a password of at least 6 characters are required.' });
+  }
+  try {
+    const countRes = await pool.query('SELECT COUNT(*)::int AS count FROM users');
+    if ((countRes.rows?.count || 0) > 0) {
+      return res.status(403).json({ error: 'Owner account already exists. Public registration is disabled.' });
+    }
+    const pwHash = hashPassword(password);
+    const insertRes = await pool.query(
+      'INSERT INTO users (email, password_hash, name) VALUES ($1, $2, $3) RETURNING id, email, name',
+      [email.toLowerCase().trim(), pwHash, name || 'Studio Owner']
+    );
+    const user = insertRes.rows;
+    const token = signJwt({ userId: user.id, email: user.email, name: user.name });
+    return res.status(201).json({ token, user });
+  } catch (err: any) {
+    return res.status(500).json({ error: err?.message || 'Setup failed' });
+  }
+});
+
+// Owner Login
+router.post(['/auth/login', '/api/auth/login'], async (req: Request, res: Response) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required.' });
+  }
+  try {
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email.toLowerCase().trim()]);
+    const user = result.rows;
+    if (!user || !verifyPassword(password, user.password_hash)) {
+      return res.status(401).json({ error: 'Invalid email or password.' });
+    }
+    const token = signJwt({ userId: user.id, email: user.email, name: user.name });
+    return res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
+  } catch (err: any) {
+    return res.status(500).json({ error: err?.message || 'Login failed' });
+  }
+});
+
+// Verify Active Session
+router.get(['/auth/me', '/api/auth/me'], (req: Request, res: Response) => {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  const decoded = verifyJwt(token);
+  if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
+  return res.json({ user: decoded });
+});
+
+// Protect All Private API Routes with JWT Middleware
+router.use((req: Request, res: Response, next) => {
+  const publicPaths = ['/health', '/api/health', '/db-health', '/api/db-health', '/auth/status', '/api/auth/status', '/auth/setup', '/api/auth/setup', '/auth/login', '/api/auth/login'];
+  if (publicPaths.includes(req.path) || !req.path.startsWith('/api')) {
+    return next();
+  }
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  const decoded = verifyJwt(token);
+  if (!decoded) {
+    return res.status(401).json({ error: 'Authentication required. Please log in to OmniCut Studio.' });
+  }
+  (req as any).user = decoded;
+  return next();
+});
 
 // Lazy Gemini client helper - avoids crash if GEMINI_API_KEY is not set
 function getAI(): GoogleGenAI | null {

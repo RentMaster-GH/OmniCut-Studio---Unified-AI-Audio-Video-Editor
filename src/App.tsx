@@ -1,3 +1,4 @@
+import { AuthGate } from "./components/auth/AuthGate";
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -160,7 +161,7 @@ function StudioContent() {
 
 export default function App() {
   return (
-    <ProjectProvider>
+    <AuthGate><ProjectProvider>
       <div className="flex flex-col h-screen w-screen overflow-hidden bg-zinc-950 font-sans text-zinc-100 antialiased selection:bg-blue-600 selection:text-white">
         <HeaderNavBar />
         <StudioContent />
@@ -170,6 +171,6 @@ export default function App() {
         <SecurityModal />
         <FreeProxyBadge />
       </div>
-    </ProjectProvider>
+    </ProjectProvider></AuthGate>
   );
 }

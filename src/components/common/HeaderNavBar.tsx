@@ -25,6 +25,7 @@ import {
   Plus,
   Trash2,
   Copy,
+  LogOut,
 } from 'lucide-react';
 
 export const HeaderNavBar: React.FC = () => {
@@ -321,6 +322,18 @@ export const HeaderNavBar: React.FC = () => {
         >
           <Upload className="w-3.5 h-3.5 text-blue-400" />
           <span>Import Media</span>
+        </button>
+
+        {/* Sign Out / Lock Studio */}
+        <button
+          onClick={() => {
+            localStorage.removeItem('omnicut_jwt');
+            window.location.reload();
+          }}
+          className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-red-700 text-zinc-400 hover:text-red-400 transition"
+          title="Lock Studio & Sign Out"
+        >
+          <LogOut className="w-3.5 h-3.5" />
         </button>
 
         {/* Export Button */}
