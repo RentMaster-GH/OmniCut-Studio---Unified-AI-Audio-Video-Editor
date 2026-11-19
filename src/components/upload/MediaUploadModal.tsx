@@ -141,6 +141,9 @@ export const MediaUploadModal: React.FC = () => {
       if (res.ok) {
         const data = await res.json();
         if (data?.url) return data.url;
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        if (errData?.error) showToast(errData.error);
       }
     } catch (err) {
       console.warn("Server upload fallback to local blob:", err);

@@ -41,6 +41,19 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 app.use('/media', express.static(uploadDir));
 
+// Helper to calculate user folder size in bytes
+function getUserFolderBytes(uid: number): number {
+  const dir = path.join('/home/soul/omnicut-uploads', `user_${uid}`);
+  if (!fs.existsSync(dir)) return 0;
+  let total = 0;
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isFile()) total += fs.statSync(full).size;
+  }
+  return total;
+}
+const USER_QUOTA_BYTES = 500 * 1024 * 1024; // 500 MB per standard user
+
 // Lazy Gemini client helper - avoids crash if GEMINI_API_KEY is not set
 function getAI(): GoogleGenAI | null {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -975,6 +988,17 @@ router.post(['/upload-media', '/api/upload-media'], upload.single('file'), (req:
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
   }
+  const uid = (req as any).user?.userId || 1;
+  const role = (req as any).user?.role || 'user';
+  if (role !== 'admin' && (req as any).user?.email !== 'papastickle@gmail.com') {
+    const usedBytes = getUserFolderBytes(uid);
+    if (usedBytes > USER_QUOTA_BYTES) {
+      try { fs.unlinkSync(req.file.path); } catch {}
+      return res.status(413).json({
+        error: 'Storage quota exceeded (500 MB max per standard user). Delete unused media files to free up space.',
+      });
+    }
+  }
   const baseUrl = process.env.APP_URL || 'https://credibleartisans.com';
   return res.json({
     success: true,
@@ -1252,6 +1276,18 @@ router.delete(['/admin/users/:id', '/api/admin/users/:id'], async (req: Request,
   } catch (err: any) {
     return res.status(500).json({ error: 'Failed to delete user', details: err?.message });
   }
+});
+
+// Delete User Media File (/api/media-library/:filename)
+router.delete(['/media-library/:filename', '/api/media-library/:filename'], (req: Request, res: Response) => {
+  const uid = (req as any).user?.userId || 1;
+  const safeName = path.basename(req.params.filename || '');
+  if (!safeName) return res.status(400).json({ error: 'Invalid filename' });
+  const filePath = path.join('/home/soul/omnicut-uploads', `user_${uid}`, safeName);
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+  }
+  return res.json({ success: true });
 });
 
 app.use(router);
