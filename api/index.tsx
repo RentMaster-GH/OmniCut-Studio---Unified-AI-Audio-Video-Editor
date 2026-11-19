@@ -1101,7 +1101,7 @@ router.post(['/render-mp4', '/api/render-mp4'], async (req: Request, res: Respon
   const resolveClipSource = async (clip: any, fallbackPath: string): Promise<string | null> => {
     if (!clip?.src || typeof clip.src !== 'string') return null;
     if (clip.src.includes('/media/')) {
-      const rel = clip.src.split('/media/') || path.basename(clip.src);
+      const rel = clip.src.split('/media/')[1] || path.basename(clip.src);
       const localFile = path.join('/home/soul/omnicut-uploads', rel);
       if (fs.existsSync(localFile)) return localFile;
     } else if (clip.src.startsWith('http')) {
@@ -1174,7 +1174,7 @@ router.post(['/render-mp4', '/api/render-mp4'], async (req: Request, res: Respon
         stitchedVideoPath
       ]);
     } else if (segmentFiles.length === 1) {
-      fs.copyFileSync(segmentFiles, stitchedVideoPath);
+      fs.copyFileSync(segmentFiles[0], stitchedVideoPath);
     } else {
       const concatListPath = path.join(workDir, 'concat.txt');
       fs.writeFileSync(concatListPath, segmentFiles.map(f => `file '${f}'`).join(String.fromCharCode(10)));
