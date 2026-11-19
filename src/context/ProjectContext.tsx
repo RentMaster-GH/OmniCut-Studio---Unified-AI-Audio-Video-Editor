@@ -113,6 +113,8 @@ interface ProjectContextType {
   loadSavedProject: (project: any) => void;
   refreshSavedProjects: () => Promise<void>;
   createNewProject: () => void;
+  deleteProject: (id: number) => Promise<void>;
+  duplicateProject: (project: any) => Promise<void>;
   avatars: AIAvatarProfile[];
   selectedAvatar: AIAvatarProfile | null;
   setSelectedAvatar: (avatar: AIAvatarProfile | null) => void;
@@ -896,6 +898,40 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [apiBase, projectTitle, currentProjectId, tracks, clips, transcript, aspectRatio, captionStyle, colorGrading, refreshSavedProjects]);
 
+  const deleteProject = useCallback(async (id: number) => {
+    try {
+      const res = await fetch(`${apiBase}/api/projects/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        if (currentProjectId === id) {
+          setCurrentProjectId(null);
+          setProjectTitle("Untitled Studio Project");
+        }
+        await refreshSavedProjects();
+      }
+    } catch (err) {
+      console.warn("Failed to delete project:", err);
+    }
+  }, [apiBase, currentProjectId, refreshSavedProjects]);
+
+  const duplicateProject = useCallback(async (project: any) => {
+    try {
+      const res = await fetch(`${apiBase}/api/projects`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: `${project.title} (Copy)`,
+          timeline_data: project.timeline_data || {},
+          media_url: project.media_url || null,
+        }),
+      });
+      if (res.ok) {
+        await refreshSavedProjects();
+      }
+    } catch (err) {
+      console.warn("Failed to duplicate project:", err);
+    }
+  }, [apiBase, refreshSavedProjects]);
+
   const createNewProject = useCallback(() => {
     setCurrentProjectId(null);
     setProjectTitle("New Studio Project");
@@ -1155,6 +1191,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         loadSavedProject,
         refreshSavedProjects,
         createNewProject,
+        deleteProject,
+        duplicateProject,
         avatars,
         selectedAvatar,
         setSelectedAvatar,

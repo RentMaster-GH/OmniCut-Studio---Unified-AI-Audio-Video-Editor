@@ -23,6 +23,8 @@ import {
   FolderOpen,
   Check,
   Plus,
+  Trash2,
+  Copy,
 } from 'lucide-react';
 
 export const HeaderNavBar: React.FC = () => {
@@ -41,6 +43,8 @@ export const HeaderNavBar: React.FC = () => {
     savedProjects,
     loadSavedProject,
     createNewProject,
+    deleteProject,
+    duplicateProject,
     isEndToEndEncrypted,
     isBiometricLocked,
     masterVolume,
@@ -222,17 +226,42 @@ export const HeaderNavBar: React.FC = () => {
               ) : (
                 <div className="max-h-60 overflow-y-auto space-y-1">
                   {savedProjects.map((proj) => (
-                    <button
+                    <div
                       key={proj.id}
-                      onClick={() => {
-                        loadSavedProject(proj);
-                        setShowProjectsMenu(false);
-                      }}
-                      className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-zinc-800 text-xs text-zinc-200 flex items-center justify-between"
+                      className="w-full px-2 py-1.5 rounded-lg hover:bg-zinc-800 text-xs text-zinc-200 flex items-center justify-between gap-1 group"
                     >
-                      <span className="truncate">{proj.title}</span>
-                      <span className="text-[10px] text-zinc-500 ml-2">#{proj.id}</span>
-                    </button>
+                      <button
+                        onClick={() => {
+                          loadSavedProject(proj);
+                          setShowProjectsMenu(false);
+                        }}
+                        className="flex-1 text-left truncate"
+                      >
+                        {proj.title}
+                      </button>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            duplicateProject(proj);
+                          }}
+                          title="Duplicate Project"
+                          className="p-1 rounded hover:bg-zinc-700 text-zinc-400 hover:text-blue-400 transition"
+                        >
+                          <Copy className="w-3 h-3" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteProject(proj.id);
+                          }}
+                          title="Delete Project"
+                          className="p-1 rounded hover:bg-zinc-700 text-zinc-400 hover:text-red-400 transition"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
