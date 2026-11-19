@@ -27,7 +27,12 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadDir),
+  destination: (req, _file, cb) => {
+    const uid = (req as any).user?.userId || 1;
+    const userDir = path.join(uploadDir, `user_${uid}`);
+    if (!fs.existsSync(userDir)) fs.mkdirSync(userDir, { recursive: true });
+    cb(null, userDir);
+  },
   filename: (_req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
     cb(null, uniqueSuffix + path.extname(file.originalname));
@@ -973,8 +978,8 @@ router.post(['/upload-media', '/api/upload-media'], upload.single('file'), (req:
   const baseUrl = process.env.APP_URL || 'https://credibleartisans.com';
   return res.json({
     success: true,
-    url: `${baseUrl}/media/${req.file.filename}`,
-    relativePath: `/media/${req.file.filename}`,
+    url: `${baseUrl}/media/user_${(req as any).user?.userId || 1}/${req.file.filename}`,
+    relativePath: `/media/user_${(req as any).user?.userId || 1}/${req.file.filename}`,
     filename: req.file.filename,
   });
 });
@@ -1060,7 +1065,8 @@ router.post(['/render-mp4', '/api/render-mp4'], async (req: Request, res: Respon
       const clipDur = Math.max(1, Number(clip.duration) || 5);
 
       if (typeof clip.src === 'string' && clip.src.includes('/media/')) {
-        const localFile = path.join('/home/soul/omnicut-uploads', path.basename(clip.src));
+        const relMediaPath = clip.src.split('/media/')[1] || path.basename(clip.src);
+        const localFile = path.join('/home/soul/omnicut-uploads', relMediaPath);
         if (fs.existsSync(localFile)) {
           inputPath = localFile;
         }
@@ -1142,7 +1148,8 @@ router.post(['/render-mp4', '/api/render-mp4'], async (req: Request, res: Respon
 // List Saved Laptop Media Files (/api/media-library)
 router.get(['/media-library', '/api/media-library'], (_req: Request, res: Response) => {
   try {
-    const dir = '/home/soul/omnicut-uploads';
+    const uid = (req as any).user?.userId || 1;
+    const dir = path.join('/home/soul/omnicut-uploads', `user_${uid}`);
     if (!fs.existsSync(dir)) return res.json([]);
     const baseUrl = process.env.APP_URL || 'https://credibleartisans.com';
     const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -1162,7 +1169,7 @@ router.get(['/media-library', '/api/media-library'], (_req: Request, res: Respon
           type,
           sizeBytes: stat.size,
           sizeLabel: `${(stat.size / (1024 * 1024)).toFixed(2)} MB`,
-          url: `${baseUrl}/media/${e.name}`,
+          url: `${baseUrl}/media/user_${uid}/${e.name}`,
           createdAt: stat.mtime,
         };
       })
@@ -1170,6 +1177,80 @@ router.get(['/media-library', '/api/media-library'], (_req: Request, res: Respon
     return res.json(files);
   } catch (err: any) {
     return res.status(500).json({ error: 'Failed to list media library', details: err?.message });
+  }
+});
+
+// Admin Dashboard Overview & User Management (Admin Role Only)
+router.get(['/admin/overview', '/api/admin/overview'], async (req: Request, res: Response) => {
+  if ((req as any).user?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin privileges required.' });
+  }
+  try {
+    const usersRes = await pool.query(`
+      SELECT u.id, u.email, u.name, u.role, u.created_at,
+             COUNT(p.id)::int AS project_count
+      FROM users u
+      LEFT JOIN projects p ON p.user_id = u.id
+      GROUP BY u.id
+      ORDER BY u.created_at ASC
+    `);
+
+    const getDirStats = (dirPath: string) => {
+      if (!fs.existsSync(dirPath)) return { bytes: 0, files: 0 };
+      let bytes = 0;
+      let files = 0;
+      for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+        const full = path.join(dirPath, entry.name);
+        if (entry.isDirectory()) {
+          const sub = getDirStats(full);
+          bytes += sub.bytes;
+          files += sub.files;
+        } else if (entry.isFile()) {
+          bytes += fs.statSync(full).size;
+          files += 1;
+        }
+      }
+      return { bytes, files };
+    };
+
+    const usersWithStorage = usersRes.rows.map((u: any) => {
+      const userStats = getDirStats(path.join('/home/soul/omnicut-uploads', `user_${u.id}`));
+      return {
+        ...u,
+        storageBytes: userStats.bytes,
+        storageMb: (userStats.bytes / (1024 * 1024)).toFixed(2),
+        fileCount: userStats.files,
+      };
+    });
+
+    const totalStats = getDirStats('/home/soul/omnicut-uploads');
+    return res.json({
+      totalUsers: usersWithStorage.length,
+      totalProjects: usersWithStorage.reduce((sum: number, u: any) => sum + u.project_count, 0),
+      totalStorageMb: (totalStats.bytes / (1024 * 1024)).toFixed(2),
+      totalFiles: totalStats.files,
+      users: usersWithStorage,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch admin overview', details: err?.message });
+  }
+});
+
+router.delete(['/admin/users/:id', '/api/admin/users/:id'], async (req: Request, res: Response) => {
+  if ((req as any).user?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin privileges required.' });
+  }
+  const targetId = Number(req.params.id);
+  if (targetId === (req as any).user?.userId) {
+    return res.status(400).json({ error: 'You cannot delete your own admin account.' });
+  }
+  try {
+    await pool.query('DELETE FROM users WHERE id = $1', [targetId]);
+    const userDir = path.join('/home/soul/omnicut-uploads', `user_${targetId}`);
+    if (fs.existsSync(userDir)) fs.rmSync(userDir, { recursive: true, force: true });
+    return res.json({ success: true });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to delete user', details: err?.message });
   }
 });
 

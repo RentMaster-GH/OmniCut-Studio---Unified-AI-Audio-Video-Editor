@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { AdminDashboardModal } from '../admin/AdminDashboardModal';
 import { useProject } from "../../context/ProjectContext";
 import {
   Film,
@@ -26,6 +27,7 @@ import {
   Trash2,
   Copy,
   LogOut,
+  Shield,
 } from 'lucide-react';
 
 export const HeaderNavBar: React.FC = () => {
@@ -54,9 +56,22 @@ export const HeaderNavBar: React.FC = () => {
     setTheme,
   } = useProject();
   const [showProjectsMenu, setShowProjectsMenu] = useState(false);
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    try {
+      const token = localStorage.getItem('omnicut_jwt');
+      if (token) {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        setIsAdmin(payload?.role === 'admin');
+      }
+    } catch {}
+  }, []);
 
   return (
-    <header className="w-full bg-zinc-950/95 border-b border-zinc-800/80 px-4 py-2.5 flex items-center justify-between text-xs text-zinc-300 backdrop-blur-md sticky top-0 z-40 select-none">
+    <>
+      <header className="w-full bg-zinc-950/95 border-b border-zinc-800/80 px-4 py-2.5 flex items-center justify-between text-xs text-zinc-300 backdrop-blur-md sticky top-0 z-40 select-none">
       {/* Left: Brand & Studio Name */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
@@ -324,6 +339,18 @@ export const HeaderNavBar: React.FC = () => {
           <span>Import Media</span>
         </button>
 
+        {/* Admin Dashboard Button (Admin Role Only) */}
+        {isAdmin && (
+          <button
+            onClick={() => setShowAdminModal(true)}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-500/15 border border-amber-500/40 hover:bg-amber-500/25 text-amber-300 text-[11px] font-semibold transition"
+            title="Open HP Laptop Admin Dashboard"
+          >
+            <Shield className="w-3.5 h-3.5" />
+            <span>Admin</span>
+          </button>
+        )}
+
         {/* Sign Out / Lock Studio */}
         <button
           onClick={() => {
@@ -346,5 +373,7 @@ export const HeaderNavBar: React.FC = () => {
         </button>
       </div>
     </header>
+      <AdminDashboardModal isOpen={showAdminModal} onClose={() => setShowAdminModal(false)} />
+    </>
   );
 };
