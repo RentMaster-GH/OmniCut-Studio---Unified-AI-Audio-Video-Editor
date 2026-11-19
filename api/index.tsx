@@ -36,17 +36,19 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 app.use('/media', express.static(uploadDir));
 
-// --- JWT & Password Hashing Helpers (Zero External Dependencies) ---
+// --- JWT & Password Hashing Helpers ---
 const JWT_SECRET = process.env.JWT_SECRET || process.env.DATABASE_URL || 'omnicut-hp-elitebook-secret-key-2026';
 
 function hashPassword(password: string): string {
   const salt = crypto.randomBytes(16).toString('hex');
   const hash = crypto.scryptSync(password, salt, 64).toString('hex');
-  return `${salt}:${hash}`;
+  return salt + ':' + hash;
 }
 
 function verifyPassword(password: string, stored: string): boolean {
-  const [salt, key] = stored.split(':');
+  const parts = stored.split(':');
+  const salt = parts[0];
+  const key = parts[1];
   if (!salt || !key) return false;
   const hashBuffer = crypto.scryptSync(password, salt, 64);
   const keyBuffer = Buffer.from(key, 'hex');
@@ -56,15 +58,16 @@ function verifyPassword(password: string, stored: string): boolean {
 function signJwt(payload: object): string {
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
   const body = Buffer.from(JSON.stringify({ ...payload, exp: Math.floor(Date.now() / 1000) + 7 * 86400 })).toString('base64url');
-  const sig = crypto.createHmac('sha256', JWT_SECRET).update(`${header}.${body}`).digest('base64url');
-  return `${header}.${body}.${sig}`;
+  const sig = crypto.createHmac('sha256', JWT_SECRET).update(header + '.' + body).digest('base64url');
+  return header + '.' + body + '.' + sig;
 }
 
 function verifyJwt(token: string): any | null {
   try {
-    const [header, body, sig] = token.split('.');
-    if (!header || !body || !sig) return null;
-    const expected = crypto.createHmac('sha256', JWT_SECRET).update(`${header}.${body}`).digest('base64url');
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const [header, body, sig] = parts;
+    const expected = crypto.createHmac('sha256', JWT_SECRET).update(header + '.' + body).digest('base64url');
     if (sig !== expected) return null;
     const data = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
     if (data.exp && data.exp < Math.floor(Date.now() / 1000)) return null;
@@ -74,17 +77,15 @@ function verifyJwt(token: string): any | null {
   }
 }
 
-// Check if Owner Account Exists
 router.get(['/auth/status', '/api/auth/status'], async (_req: Request, res: Response) => {
   try {
     const result = await pool.query('SELECT COUNT(*)::int AS count FROM users');
-    return res.json({ initialized: (result.rows?.count || 0) > 0 });
+    return res.json({ initialized: (result.rows[0]?.count || 0) > 0 });
   } catch (err: any) {
     return res.status(500).json({ error: err?.message });
   }
 });
 
-// One-Time Owner Registration (Automatically locks once owner exists)
 router.post(['/auth/setup', '/api/auth/setup'], async (req: Request, res: Response) => {
   const { email, password, name } = req.body;
   if (!email || !password || password.length < 6) {
@@ -92,7 +93,7 @@ router.post(['/auth/setup', '/api/auth/setup'], async (req: Request, res: Respon
   }
   try {
     const countRes = await pool.query('SELECT COUNT(*)::int AS count FROM users');
-    if ((countRes.rows?.count || 0) > 0) {
+    if ((countRes.rows[0]?.count || 0) > 0) {
       return res.status(403).json({ error: 'Owner account already exists. Public registration is disabled.' });
     }
     const pwHash = hashPassword(password);
@@ -100,7 +101,7 @@ router.post(['/auth/setup', '/api/auth/setup'], async (req: Request, res: Respon
       'INSERT INTO users (email, password_hash, name) VALUES ($1, $2, $3) RETURNING id, email, name',
       [email.toLowerCase().trim(), pwHash, name || 'Studio Owner']
     );
-    const user = insertRes.rows;
+    const user = insertRes.rows[0];
     const token = signJwt({ userId: user.id, email: user.email, name: user.name });
     return res.status(201).json({ token, user });
   } catch (err: any) {
@@ -108,7 +109,6 @@ router.post(['/auth/setup', '/api/auth/setup'], async (req: Request, res: Respon
   }
 });
 
-// Owner Login
 router.post(['/auth/login', '/api/auth/login'], async (req: Request, res: Response) => {
   const { email, password } = req.body;
   if (!email || !password) {
@@ -116,7 +116,7 @@ router.post(['/auth/login', '/api/auth/login'], async (req: Request, res: Respon
   }
   try {
     const result = await pool.query('SELECT * FROM users WHERE email = $1', [email.toLowerCase().trim()]);
-    const user = result.rows;
+    const user = result.rows[0];
     if (!user || !verifyPassword(password, user.password_hash)) {
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
@@ -127,7 +127,6 @@ router.post(['/auth/login', '/api/auth/login'], async (req: Request, res: Respon
   }
 });
 
-// Verify Active Session
 router.get(['/auth/me', '/api/auth/me'], (req: Request, res: Response) => {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
@@ -136,7 +135,6 @@ router.get(['/auth/me', '/api/auth/me'], (req: Request, res: Response) => {
   return res.json({ user: decoded });
 });
 
-// Protect All Private API Routes with JWT Middleware
 router.use((req: Request, res: Response, next) => {
   const publicPaths = ['/health', '/api/health', '/db-health', '/api/db-health', '/auth/status', '/api/auth/status', '/auth/setup', '/api/auth/setup', '/auth/login', '/api/auth/login'];
   if (publicPaths.includes(req.path) || !req.path.startsWith('/api')) {
