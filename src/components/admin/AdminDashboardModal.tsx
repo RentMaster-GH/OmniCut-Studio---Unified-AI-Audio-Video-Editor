@@ -18,7 +18,13 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ isOpen
     setError(null);
     try {
       const res = await fetch(`${apiBase}/api/admin/overview`);
-      const data = await res.json();
+      const rawText = await res.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        throw new Error(`Server returned HTTP ${res.status}: ${rawText.slice(0, 120)}`);
+      }
       if (!res.ok) throw new Error(data.error || 'Failed to load admin overview');
       setOverview(data);
     } catch (err: any) {
