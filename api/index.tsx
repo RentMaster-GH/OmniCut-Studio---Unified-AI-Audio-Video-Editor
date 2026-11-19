@@ -1268,6 +1268,80 @@ router.post(['/render-mp4', '/api/render-mp4'], async (req: Request, res: Respon
   }
 });
 
+// Admin Dashboard Overview & User Management (Admin Role Only)
+router.get(['/admin/overview', '/api/admin/overview'], async (req: Request, res: Response) => {
+  if ((req as any).user?.role !== 'admin' && (req as any).user?.email !== 'papastickle@gmail.com') {
+    return res.status(403).json({ error: 'Admin privileges required.' });
+  }
+  try {
+    const usersRes = await pool.query(`
+      SELECT u.id, u.email, u.name, u.role, u.created_at,
+             COUNT(p.id)::int AS project_count
+      FROM users u
+      LEFT JOIN projects p ON p.user_id = u.id
+      GROUP BY u.id
+      ORDER BY u.created_at ASC
+    `);
+
+    const getDirStats = (dirPath: string) => {
+      if (!fs.existsSync(dirPath)) return { bytes: 0, files: 0 };
+      let bytes = 0;
+      let files = 0;
+      for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+        const full = path.join(dirPath, entry.name);
+        if (entry.isDirectory()) {
+          const sub = getDirStats(full);
+          bytes += sub.bytes;
+          files += sub.files;
+        } else if (entry.isFile()) {
+          bytes += fs.statSync(full).size;
+          files += 1;
+        }
+      }
+      return { bytes, files };
+    };
+
+    const usersWithStorage = usersRes.rows.map((u: any) => {
+      const userStats = getDirStats(path.join('/home/soul/omnicut-uploads', `user_${u.id}`));
+      return {
+        ...u,
+        storageBytes: userStats.bytes,
+        storageMb: (userStats.bytes / (1024 * 1024)).toFixed(2),
+        fileCount: userStats.files,
+      };
+    });
+
+    const totalStats = getDirStats('/home/soul/omnicut-uploads');
+    return res.json({
+      totalUsers: usersWithStorage.length,
+      totalProjects: usersWithStorage.reduce((sum: number, u: any) => sum + u.project_count, 0),
+      totalStorageMb: (totalStats.bytes / (1024 * 1024)).toFixed(2),
+      totalFiles: totalStats.files,
+      users: usersWithStorage,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch admin overview', details: err?.message });
+  }
+});
+
+router.delete(['/admin/users/:id', '/api/admin/users/:id'], async (req: Request, res: Response) => {
+  if ((req as any).user?.role !== 'admin' && (req as any).user?.email !== 'papastickle@gmail.com') {
+    return res.status(403).json({ error: 'Admin privileges required.' });
+  }
+  const targetId = Number(req.params.id);
+  if (targetId === (req as any).user?.userId) {
+    return res.status(400).json({ error: 'You cannot delete your own admin account.' });
+  }
+  try {
+    await pool.query('DELETE FROM users WHERE id = $1', [targetId]);
+    const userDir = path.join('/home/soul/omnicut-uploads', `user_${targetId}`);
+    if (fs.existsSync(userDir)) fs.rmSync(userDir, { recursive: true, force: true });
+    return res.json({ success: true });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to delete user', details: err?.message });
+  }
+});
+
 app.use(router);
 
 // Default export for Vercel Serverless Function
