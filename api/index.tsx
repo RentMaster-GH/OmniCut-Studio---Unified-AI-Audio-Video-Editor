@@ -49,7 +49,7 @@ app.use('/media', express.static(uploadDir));
 
 // Helper to calculate user folder size in bytes
 function getUserFolderBytes(uid: number): number {
-  const dir = path.join('/home/soul/omnicut-uploads', `user_${uid}`);
+  const dir = path.join(uploadDir, `user_${uid}`);
   if (!fs.existsSync(dir)) return 0;
   let total = 0;
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -1108,7 +1108,7 @@ router.post(['/render-mp4', '/api/render-mp4'], async (req: Request, res: Respon
     if (!clip?.src || typeof clip.src !== 'string') return null;
     if (clip.src.includes('/media/')) {
       const rel = clip.src.split('/media/')[1] || path.basename(clip.src);
-      const localFile = path.join('/home/soul/omnicut-uploads', rel);
+      const localFile = path.join(uploadDir, rel);
       if (fs.existsSync(localFile)) return localFile;
     } else if (clip.src.startsWith('http')) {
       const resp = await fetch(clip.src);
@@ -1302,7 +1302,7 @@ router.get(['/admin/overview', '/api/admin/overview'], async (req: Request, res:
     };
 
     const usersWithStorage = usersRes.rows.map((u: any) => {
-      const userStats = getDirStats(path.join('/home/soul/omnicut-uploads', `user_${u.id}`));
+      const userStats = getDirStats(path.join(uploadDir, `user_${u.id}`));
       return {
         ...u,
         storageBytes: userStats.bytes,
@@ -1311,7 +1311,7 @@ router.get(['/admin/overview', '/api/admin/overview'], async (req: Request, res:
       };
     });
 
-    const totalStats = getDirStats('/home/soul/omnicut-uploads');
+    const totalStats = getDirStats(uploadDir);
     return res.json({
       totalUsers: usersWithStorage.length,
       totalProjects: usersWithStorage.reduce((sum: number, u: any) => sum + u.project_count, 0),
@@ -1334,7 +1334,7 @@ router.delete(['/admin/users/:id', '/api/admin/users/:id'], async (req: Request,
   }
   try {
     await pool.query('DELETE FROM users WHERE id = $1', [targetId]);
-    const userDir = path.join('/home/soul/omnicut-uploads', `user_${targetId}`);
+    const userDir = path.join(uploadDir, `user_${targetId}`);
     if (fs.existsSync(userDir)) fs.rmSync(userDir, { recursive: true, force: true });
     return res.json({ success: true });
   } catch (err: any) {
