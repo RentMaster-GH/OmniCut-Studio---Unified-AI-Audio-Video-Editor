@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { drawLiveGenerativeScene } from "../../utils/videoLibrary";
 import { audioManager } from "../../utils/audioManager";
-import { ColorGrading } from './types';
+import { ColorGrading } from '../../types';
 
 function getCssFilter(colorGrading: ColorGrading): string {
   const brightness = 1 + (colorGrading.brightness || 0) / 100;

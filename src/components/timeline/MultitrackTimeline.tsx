@@ -22,7 +22,7 @@ import {
   FileText,
   Upload,
 } from 'lucide-react';
-import { TimelineClip } from './types';
+import { TimelineClip } from '../../types';
 
 export const MultitrackTimeline: React.FC = () => {
   const {

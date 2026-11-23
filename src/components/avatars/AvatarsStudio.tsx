@@ -22,7 +22,7 @@ import {
   Smile,
   Dna,
 } from 'lucide-react';
-import { AIAvatarProfile, AvatarLifeformType, AvatarMicroExpression } from "./types";
+import { AIAvatarProfile, AvatarLifeformType, AvatarMicroExpression } from "../../types";
 import { audioManager } from "../../utils/audioManager";
 
 export const AvatarsStudio: React.FC = () => {

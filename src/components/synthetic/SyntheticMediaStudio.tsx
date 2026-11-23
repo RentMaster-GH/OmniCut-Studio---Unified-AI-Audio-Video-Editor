@@ -21,7 +21,7 @@ import {
   Info,
   Hash,
 } from 'lucide-react';
-import { SyntheticMediaCategory, SyntheticMediaJob } from './types';
+import { SyntheticMediaCategory, SyntheticMediaJob } from '../../types';
 
 export const SyntheticMediaStudio: React.FC = () => {
   const {

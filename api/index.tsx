@@ -1017,7 +1017,7 @@ router.post(['/upload-media', '/api/upload-media'], upload.single('file'), (req:
 // PostgreSQL Projects CRUD Routes (Replaces Supabase)
 router.get(['/projects', '/api/projects'], async (_req: Request, res: Response) => {
   try {
-    const userId = (req as any).user?.userId;
+    const userId = (_req as any).user?.userId;
     const result = await pool.query('SELECT * FROM projects WHERE user_id = $1 ORDER BY updated_at DESC, created_at DESC', [userId]);
     return res.json(result.rows);
   } catch (err: any) {

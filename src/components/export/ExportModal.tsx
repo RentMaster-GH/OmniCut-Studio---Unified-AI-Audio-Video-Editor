@@ -19,7 +19,7 @@ import {
   Music,
 } from 'lucide-react';
 import { EXPORT_PRESETS } from '../../utils/initialProject';
-import { ExportPreset } from './types';
+import { ExportPreset } from '../../types';
 import {
   generateValidWavBlob,
   generateSrtContent,

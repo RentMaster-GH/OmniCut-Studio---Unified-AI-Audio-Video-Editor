@@ -23,5 +23,10 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "_legacy_supabase_routes"
+  ]
 }
