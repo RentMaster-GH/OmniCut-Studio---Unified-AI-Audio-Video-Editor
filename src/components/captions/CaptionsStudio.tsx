@@ -11,16 +11,35 @@ import {
   Check,
 } from 'lucide-react';
 import { CaptionStyle } from '../../types';
+import { generateSmartScript, cuesToSRT, cuesToVTT, SubtitleCue } from '../../lib/subtitles';
 
 export const CaptionsStudio: React.FC = () => {
   const { captionStyle, setCaptionStyle, clips, currentTime } = useProject();
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [captionTopic, setCaptionTopic] = useState<string>("Accra Creator Launch");
+  const [captionLang, setCaptionLang] = useState<"en" | "tw" | "pcm" | "fr" | "yo">("en");
+  const [generatedCues, setGeneratedCues] = useState<SubtitleCue[]>([]);
 
   // Active caption text for live preview
   const activeCaption = clips.find(
     c => c.trackId === 'track-captions' && currentTime >= c.start && currentTime <= c.start + c.duration
   );
-  const sampleText = activeCaption?.text || 'EDIT VIDEOS 10X FASTER WITH AI';
+  const sampleText = generatedCues?.text || activeCaption?.text || 'EDIT VIDEOS 10X FASTER WITH AI';
+
+  const handleGenerateMultilingual = () => {
+    const cues = generateSmartScript(captionTopic, captionLang, 32);
+    setGeneratedCues(cues);
+  };
+
+  const downloadSubtitleFile = (fmt: "srt" | "vtt") => {
+    const cues = generatedCues.length ? generatedCues : generateSmartScript(captionTopic, captionLang, 32);
+    const content = fmt === "srt" ? cuesToSRT(cues) : cuesToVTT(cues);
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `omnicut-${captionLang}-${Date.now()}.${fmt}`;
+    a.click();
+  };
 
   const applyPreset = (preset: CaptionStyle['preset']) => {
     switch (preset) {
@@ -168,6 +187,68 @@ export const CaptionsStudio: React.FC = () => {
       </div>
 
       <div className="flex-1 p-4 overflow-y-auto space-y-5 text-xs text-zinc-300">
+        {/* Multilingual AI Script & Subtitle Export */}
+        <div className="p-3 rounded-xl bg-zinc-900/90 border border-indigo-500/40 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-300">
+              🌍 AI Multilingual Captions (EN / Twi / Pidgin / FR / YO)
+            </span>
+          </div>
+          <div className="flex gap-1.5">
+            <input
+              type="text"
+              value={captionTopic}
+              onChange={(e) => setCaptionTopic(e.target.value)}
+              placeholder="Video topic or hook..."
+              className="flex-1 px-2.5 py-1.5 rounded-lg bg-zinc-950 border border-zinc-700 text-xs text-white focus:outline-none focus:border-indigo-500"
+            />
+            <select
+              value={captionLang}
+              onChange={(e) => setCaptionLang(e.target.value as any)}
+              className="px-2 py-1.5 rounded-lg bg-zinc-950 border border-zinc-700 text-xs text-amber-300 font-semibold"
+            >
+              <option value="en">English</option>
+              <option value="tw">Twi (GH)</option>
+              <option value="pcm">Pidgin</option>
+              <option value="fr">Français</option>
+              <option value="yo">Yorùbá</option>
+            </select>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={handleGenerateMultilingual}
+              className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px]"
+            >
+              ✨ Generate Cues
+            </button>
+            <button
+              type="button"
+              onClick={() => downloadSubtitleFile("srt")}
+              className="px-2.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-semibold text-[11px]"
+            >
+              ⬇️ .SRT
+            </button>
+            <button
+              type="button"
+              onClick={() => downloadSubtitleFile("vtt")}
+              className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 font-semibold text-[11px]"
+            >
+              ⬇️ .VTT
+            </button>
+          </div>
+          {generatedCues.length > 0 && (
+            <div className="space-y-1 max-h-28 overflow-y-auto pt-1 border-t border-zinc-800">
+              {generatedCues.map((c, idx) => (
+                <div key={idx} className="text-[11px] bg-zinc-950/90 px-2 py-1 rounded border border-zinc-800/80 flex gap-2">
+                  <span className="font-mono text-indigo-400 shrink-0">{c.start}s–{c.end}s</span>
+                  <span className="text-zinc-200">{c.text}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Style Presets Grid */}
         <div>
           <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-2">
