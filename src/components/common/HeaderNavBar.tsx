@@ -355,16 +355,17 @@ export const HeaderNavBar: React.FC = () => {
           </button>
         )}
 
-        {/* Sign Out / Lock Studio */}
+        {/* Sign Out */}
         <button
           onClick={() => {
             localStorage.removeItem('omnicut_jwt');
             window.location.reload();
           }}
-          className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-red-700 text-zinc-400 hover:text-red-400 transition"
-          title="Lock Studio & Sign Out"
+          className="px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-red-700/80 hover:bg-red-950/30 text-zinc-300 hover:text-red-300 text-xs font-semibold transition flex items-center gap-1.5"
+          title="Sign Out of OmniCut Studio"
         >
           <LogOut className="w-3.5 h-3.5" />
+          <span>Sign Out</span>
         </button>
 
         {/* Export Button */}
