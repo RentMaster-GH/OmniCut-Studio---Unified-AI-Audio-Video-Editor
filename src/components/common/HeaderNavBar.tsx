@@ -75,9 +75,9 @@ export const HeaderNavBar: React.FC = () => {
 
   return (
     <>
-      <header className="w-full bg-zinc-950/95 border-b border-zinc-800/80 px-4 py-2.5 flex items-center justify-between text-xs text-zinc-300 backdrop-blur-md sticky top-0 z-40 select-none">
+      <header className="w-full bg-zinc-950/95 border-b border-zinc-800/80 px-3 py-2 flex items-center justify-between gap-2 text-xs text-zinc-300 backdrop-blur-md sticky top-0 z-40 select-none overflow-hidden">
       {/* Left: Brand & Studio Name */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 min-w-0 flex-1">
         <div className="flex items-center gap-1">
           <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
             <Film className="w-4 h-4" />
@@ -93,7 +93,7 @@ export const HeaderNavBar: React.FC = () => {
         </div>
 
         {/* Central Workspace Modes Switcher - accessible on all screens */}
-        <nav className="flex items-center bg-zinc-900/90 rounded-xl p-1 border border-zinc-800 ml-1.5 sm:ml-3 overflow-x-auto max-w-[50vw] sm:max-w-none">
+        <nav className="flex items-center bg-zinc-900/90 rounded-xl p-1 border border-zinc-800 ml-1.5 overflow-x-auto max-w-[42vw] xl:max-w-none min-w-0">
           <button
             onClick={() => setActiveTab('editor')}
             title="Editor (Unified Multitrack & Player)"
@@ -188,11 +188,11 @@ export const HeaderNavBar: React.FC = () => {
       </div>
 
       {/* Right: Security indicators, Team avatars, Export CTA */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 shrink-0">
         {/* Security & Cloud status badges */}
         <button
           onClick={() => setShowSecurityModal(true)}
-          className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 transition"
+          className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 transition"
           title="Security, Biometrics & End-to-End Encryption"
         >
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
