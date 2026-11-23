@@ -1,3 +1,4 @@
+import { SovereignSsoBadge } from './components/SovereignSsoBadge';
 import { AuthGate } from "./components/auth/AuthGate";
 /**
  * @license
@@ -170,7 +171,8 @@ export default function App() {
         <ShortcutsModal />
         <SecurityModal />
         <FreeProxyBadge />
-      </div>
+            <SovereignSsoBadge />
+    </div>
     </ProjectProvider></AuthGate>
   );
 }
