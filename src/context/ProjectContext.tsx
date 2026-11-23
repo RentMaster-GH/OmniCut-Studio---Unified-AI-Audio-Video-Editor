@@ -476,7 +476,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       let scriptData: any = null;
       try {
-        const resp = await fetch(`${import.meta.env.VITE_API_URL || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? 'https://www.credibleartisans.com' : '')}/api/ai/generate-script`, {
+        const resp = await fetch(`${import.meta.env.VITE_API_URL || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? 'https://credibleartisans.com' : '')}/api/ai/generate-script`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ prompt, tone, format, mode, image, duration: durationPreset, realism: realismStyle }),
@@ -843,7 +843,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [savedProjects, setSavedProjects] = useState<any[]>([]);
   const isInitialMount = useRef(true);
 
-  const apiBase = (import.meta as any).env?.VITE_API_URL || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? 'https://www.credibleartisans.com' : '');
+  const apiBase = (import.meta as any).env?.VITE_API_URL || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? 'https://credibleartisans.com' : '');
 
   const refreshSavedProjects = useCallback(async () => {
     try {

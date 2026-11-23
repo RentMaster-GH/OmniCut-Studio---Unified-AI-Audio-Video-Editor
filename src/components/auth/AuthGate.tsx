@@ -5,7 +5,7 @@ const originalFetch = window.fetch.bind(window);
 window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
   const token = localStorage.getItem('omnicut_jwt');
   const urlStr = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
-  const apiBase = (import.meta as any).env?.VITE_API_URL || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? 'https://www.credibleartisans.com' : '');
+  const apiBase = (import.meta as any).env?.VITE_API_URL || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? 'https://credibleartisans.com' : '');
 
   if (token && (urlStr.startsWith('/api') || (apiBase && urlStr.startsWith(apiBase)))) {
     const headers = new Headers(init?.headers || {});
@@ -29,7 +29,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const apiBase = (import.meta as any).env?.VITE_API_URL || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? 'https://www.credibleartisans.com' : '');
+  const apiBase = (import.meta as any).env?.VITE_API_URL || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? 'https://credibleartisans.com' : '');
 
   useEffect(() => {
     const checkSession = async () => {
