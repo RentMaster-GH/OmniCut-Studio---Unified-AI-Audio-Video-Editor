@@ -1,5 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: any, res: any) {
   const { keywords } = req.body;
   // Returns Pexels-style B-roll search - you can integrate Pexels API
   const PEXELS = process.env.PEXELS_API_KEY;

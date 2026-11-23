@@ -28,7 +28,7 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-const uploadDir = '/home/soul/omnicut-uploads';
+const uploadDir = process.env.OMNICUT_UPLOAD_DIR || '/tmp/omnicut-uploads';
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
