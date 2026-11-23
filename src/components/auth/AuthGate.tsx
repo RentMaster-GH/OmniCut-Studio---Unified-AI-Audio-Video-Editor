@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, ShieldCheck, Loader2, LogIn, UserPlus } from 'lucide-react';
+import { Lock, ShieldCheck, Loader2, LogIn, UserPlus, Eye, EyeOff } from 'lucide-react';
 
 const originalFetch = window.fetch.bind(window);
 window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
@@ -21,6 +21,9 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const [status, setStatus] = useState<'checking' | 'login' | 'register' | 'authenticated'>('checking');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -50,9 +53,24 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
     checkSession();
   }, [apiBase]);
 
+  const switchMode = (nextMode: 'login' | 'register') => {
+    setStatus(nextMode);
+    setError(null);
+    setSuccessMsg(null);
+    setConfirmPassword('');
+    setShowPassword(false);
+    setShowConfirmPassword(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (status === 'register' && password !== confirmPassword) {
+      setError('Passwords do not match. Please re-enter and confirm your password.');
+      return;
+    }
+
     setSubmitting(true);
 
     const endpoint = status === 'register' ? '/api/auth/register' : '/api/auth/login';
@@ -68,6 +86,9 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
       }
       if (status === 'register') {
         setPassword('');
+        setConfirmPassword('');
+        setShowPassword(false);
+        setShowConfirmPassword(false);
         setSuccessMsg('Account created successfully! Please sign in with your new credentials.');
         setStatus('login');
       } else if (data.token) {
@@ -118,14 +139,14 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
         <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-zinc-950 border border-zinc-800 text-xs">
           <button
             type="button"
-            onClick={() => { setStatus('login'); setError(null); }}
+            onClick={() => switchMode('login')}
             className={`py-1.5 rounded-lg font-semibold transition ${status === 'login' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-200'}`}
           >
             Sign In
           </button>
           <button
             type="button"
-            onClick={() => { setStatus('register'); setError(null); }}
+            onClick={() => switchMode('register')}
             className={`py-1.5 rounded-lg font-semibold transition ${status === 'register' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-200'}`}
           >
             Create Account
@@ -173,16 +194,51 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
           <div>
             <label className="block text-zinc-300 font-medium mb-1">Password</label>
-            <input
-              type="password"
-              required
-              minLength={6}
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 focus:border-blue-500 text-white outline-none"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                minLength={6}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-3 py-2 pr-10 rounded-xl bg-zinc-950 border border-zinc-800 focus:border-blue-500 text-white outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                className="absolute inset-y-0 right-0 px-3 flex items-center text-zinc-400 hover:text-zinc-200 transition"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
+
+          {status === 'register' && (
+            <div>
+              <label className="block text-zinc-300 font-medium mb-1">Confirm Password</label>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  required
+                  minLength={6}
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-3 py-2 pr-10 rounded-xl bg-zinc-950 border border-zinc-800 focus:border-blue-500 text-white outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                  className="absolute inset-y-0 right-0 px-3 flex items-center text-zinc-400 hover:text-zinc-200 transition"
+                >
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+          )}
 
           <button
             type="submit"
