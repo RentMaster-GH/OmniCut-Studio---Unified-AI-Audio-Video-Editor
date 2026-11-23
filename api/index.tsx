@@ -193,6 +193,63 @@ router.post(['/auth/login', '/api/auth/login'], async (req: Request, res: Respon
   }
 });
 
+router.post(['/auth/forgot-password', '/api/auth/forgot-password'], async (req: Request, res: Response) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: 'Please enter your account email address.' });
+  }
+  try {
+    const cleanEmail = email.toLowerCase().trim();
+    const result = await pool.query('SELECT id, email, password_hash FROM users WHERE email = $1', [cleanEmail]);
+    const user = result.rows[0];
+    if (!user) {
+      return res.status(404).json({ error: 'No OmniCut Studio account found with that email.' });
+    }
+    const pwFingerprint = crypto.createHash('sha256').update(user.password_hash).digest('hex').slice(0, 16);
+    const resetToken = signJwt({
+      purpose: 'password_reset',
+      userId: user.id,
+      email: user.email,
+      pwFingerprint,
+      exp: Math.floor(Date.now() / 1000) + 900,
+    });
+    console.log(`[OmniCut Auth] Password reset token issued for ${user.email}`);
+    return res.json({
+      message: 'Reset token generated. Enter your new password below.',
+      resetToken,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err?.message || 'Failed to generate reset token' });
+  }
+});
+
+router.post(['/auth/reset-password', '/api/auth/reset-password'], async (req: Request, res: Response) => {
+  const { resetToken, newPassword } = req.body;
+  if (!resetToken || !newPassword || newPassword.length < 6) {
+    return res.status(400).json({ error: 'A valid reset token and a new password of at least 6 characters are required.' });
+  }
+  try {
+    const decoded = verifyJwt(resetToken);
+    if (!decoded || decoded.purpose !== 'password_reset' || !decoded.userId) {
+      return res.status(400).json({ error: 'Reset token is invalid or has expired. Please request a new one.' });
+    }
+    const result = await pool.query('SELECT id, password_hash FROM users WHERE id = $1', [decoded.userId]);
+    const user = result.rows[0];
+    if (!user) {
+      return res.status(404).json({ error: 'Account not found.' });
+    }
+    const currentFingerprint = crypto.createHash('sha256').update(user.password_hash).digest('hex').slice(0, 16);
+    if (decoded.pwFingerprint !== currentFingerprint) {
+      return res.status(400).json({ error: 'This reset token has already been used. Please request a new one.' });
+    }
+    const newHash = hashPassword(newPassword);
+    await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [newHash, user.id]);
+    return res.json({ message: 'Password updated successfully! You can now sign in.' });
+  } catch (err: any) {
+    return res.status(500).json({ error: err?.message || 'Password reset failed' });
+  }
+});
+
 router.get(['/auth/me', '/api/auth/me'], (req: Request, res: Response) => {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
@@ -202,7 +259,7 @@ router.get(['/auth/me', '/api/auth/me'], (req: Request, res: Response) => {
 });
 
 router.use((req: Request, res: Response, next) => {
-  const publicPaths = ['/health', '/api/health', '/db-health', '/api/db-health', '/auth/status', '/api/auth/status', '/auth/setup', '/api/auth/setup', '/auth/register', '/api/auth/register', '/auth/login', '/api/auth/login'];
+  const publicPaths = ['/health', '/api/health', '/db-health', '/api/db-health', '/auth/status', '/api/auth/status', '/auth/setup', '/api/auth/setup', '/auth/register', '/api/auth/register', '/auth/login', '/api/auth/login', '/auth/forgot-password', '/api/auth/forgot-password', '/auth/reset-password', '/api/auth/reset-password'];
   if (publicPaths.includes(req.path)) {
     return next();
   }

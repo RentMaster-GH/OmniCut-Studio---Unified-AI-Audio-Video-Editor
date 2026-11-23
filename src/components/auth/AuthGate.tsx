@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, ShieldCheck, Loader2, LogIn, UserPlus, Eye, EyeOff } from 'lucide-react';
+import { Lock, ShieldCheck, Loader2, LogIn, UserPlus, Eye, EyeOff, KeyRound, ArrowLeft } from 'lucide-react';
+
+const API_HOST = 'https://' + 'api.' + 'credibleartisans' + '.com';
 
 const originalFetch = window.fetch.bind(window);
 window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
   const token = localStorage.getItem('omnicut_jwt');
   const urlStr = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
-  const apiBase = (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? 'https://api.credibleartisans.com' : '');
+  const apiBase = typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? API_HOST : '';
 
   if (token && (urlStr.startsWith('/api') || (apiBase && urlStr.startsWith(apiBase)))) {
     const headers = new Headers(init?.headers || {});
@@ -18,10 +20,11 @@ window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
 };
 
 export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [status, setStatus] = useState<'checking' | 'login' | 'register' | 'authenticated'>('checking');
+  const [status, setStatus] = useState<'checking' | 'login' | 'register' | 'forgot' | 'authenticated'>('checking');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [resetToken, setResetToken] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [name, setName] = useState('');
@@ -29,7 +32,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const apiBase = (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? 'https://api.credibleartisans.com' : '');
+  const apiBase = typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? API_HOST : '';
 
   useEffect(() => {
     const checkSession = async () => {
@@ -53,11 +56,13 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
     checkSession();
   }, [apiBase]);
 
-  const switchMode = (nextMode: 'login' | 'register') => {
+  const switchMode = (nextMode: 'login' | 'register' | 'forgot') => {
     setStatus(nextMode);
     setError(null);
     setSuccessMsg(null);
+    setPassword('');
     setConfirmPassword('');
+    setResetToken('');
     setShowPassword(false);
     setShowConfirmPassword(false);
   };
@@ -66,15 +71,41 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
     e.preventDefault();
     setError(null);
 
-    if (status === 'register' && password !== confirmPassword) {
+    if ((status === 'register' || (status === 'forgot' && resetToken)) && password !== confirmPassword) {
       setError('Passwords do not match. Please re-enter and confirm your password.');
       return;
     }
 
     setSubmitting(true);
 
-    const endpoint = status === 'register' ? '/api/auth/register' : '/api/auth/login';
     try {
+      if (status === 'forgot') {
+        if (!resetToken) {
+          const res = await originalFetch(`${apiBase}/api/auth/forgot-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Could not initiate password reset');
+          setResetToken(data.resetToken || '');
+          setSuccessMsg(data.message || 'Account verified! Enter and confirm your new password below.');
+          return;
+        } else {
+          const res = await originalFetch(`${apiBase}/api/auth/reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ resetToken, newPassword: password }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Password reset failed');
+          switchMode('login');
+          setSuccessMsg(data.message || 'Password updated successfully! Please sign in.');
+          return;
+        }
+      }
+
+      const endpoint = status === 'register' ? '/api/auth/register' : '/api/auth/login';
       const res = await originalFetch(`${apiBase}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -85,12 +116,8 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
         throw new Error(data.error || 'Authentication failed');
       }
       if (status === 'register') {
-        setPassword('');
-        setConfirmPassword('');
-        setShowPassword(false);
-        setShowConfirmPassword(false);
+        switchMode('login');
         setSuccessMsg('Account created successfully! Please sign in with your new credentials.');
-        setStatus('login');
       } else if (data.token) {
         localStorage.setItem('omnicut_jwt', data.token);
         setStatus('authenticated');
@@ -122,36 +149,52 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
       <div className="w-full max-w-md bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 shadow-2xl space-y-5">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400">
-            <Lock className="w-5 h-5" />
+            {status === 'forgot' ? <KeyRound className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
           </div>
           <div>
             <h1 className="text-base font-bold text-white">
-              {status === 'register' ? 'Create OmniCut Studio Account' : 'Sign In to OmniCut Studio'}
+              {status === 'register'
+                ? 'Create OmniCut Studio Account'
+                : status === 'forgot'
+                ? 'Reset Account Password'
+                : 'Sign In to OmniCut Studio'}
             </h1>
             <p className="text-xs text-zinc-400">
               {status === 'register'
                 ? 'Register a workspace to edit videos, generate AI audio, and save projects.'
+                : status === 'forgot'
+                ? 'Verify your account email to set a new password.'
                 : 'Access your cloud timeline, AI tools, and media workspace'}
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-zinc-950 border border-zinc-800 text-xs">
+        {status !== 'forgot' ? (
+          <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-zinc-950 border border-zinc-800 text-xs">
+            <button
+              type="button"
+              onClick={() => switchMode('login')}
+              className={`py-1.5 rounded-lg font-semibold transition ${status === 'login' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-200'}`}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              onClick={() => switchMode('register')}
+              className={`py-1.5 rounded-lg font-semibold transition ${status === 'register' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-200'}`}
+            >
+              Create Account
+            </button>
+          </div>
+        ) : (
           <button
             type="button"
             onClick={() => switchMode('login')}
-            className={`py-1.5 rounded-lg font-semibold transition ${status === 'login' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-200'}`}
+            className="inline-flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 font-medium transition"
           >
-            Sign In
+            <ArrowLeft className="w-3.5 h-3.5" /> Back to Sign In
           </button>
-          <button
-            type="button"
-            onClick={() => switchMode('register')}
-            className={`py-1.5 rounded-lg font-semibold transition ${status === 'register' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-200'}`}
-          >
-            Create Account
-          </button>
-        </div>
+        )}
 
         {successMsg && (
           <div className="p-3 rounded-xl bg-emerald-950/60 border border-emerald-800/80 text-emerald-300 text-xs">
@@ -185,39 +228,57 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
             <input
               type="email"
               required
+              disabled={status === 'forgot' && Boolean(resetToken)}
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 focus:border-blue-500 text-white outline-none"
+              className="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 focus:border-blue-500 text-white outline-none disabled:opacity-60"
             />
           </div>
 
-          <div>
-            <label className="block text-zinc-300 font-medium mb-1">Password</label>
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                required
-                minLength={6}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 pr-10 rounded-xl bg-zinc-950 border border-zinc-800 focus:border-blue-500 text-white outline-none"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-                className="absolute inset-y-0 right-0 px-3 flex items-center text-zinc-400 hover:text-zinc-200 transition"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-
-          {status === 'register' && (
+          {(status !== 'forgot' || Boolean(resetToken)) && (
             <div>
-              <label className="block text-zinc-300 font-medium mb-1">Confirm Password</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-zinc-300 font-medium">
+                  {status === 'forgot' ? 'New Password' : 'Password'}
+                </label>
+                {status === 'login' && (
+                  <button
+                    type="button"
+                    onClick={() => switchMode('forgot')}
+                    className="text-[11px] text-blue-400 hover:text-blue-300 font-medium transition"
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  minLength={6}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-3 py-2 pr-10 rounded-xl bg-zinc-950 border border-zinc-800 focus:border-blue-500 text-white outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="absolute inset-y-0 right-0 px-3 flex items-center text-zinc-400 hover:text-zinc-200 transition"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {(status === 'register' || (status === 'forgot' && Boolean(resetToken))) && (
+            <div>
+              <label className="block text-zinc-300 font-medium mb-1">
+                {status === 'forgot' ? 'Confirm New Password' : 'Confirm Password'}
+              </label>
               <div className="relative">
                 <input
                   type={showConfirmPassword ? 'text' : 'password'}
@@ -250,6 +311,10 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
             ) : status === 'register' ? (
               <>
                 <UserPlus className="w-4 h-4" /> Create Account
+              </>
+            ) : status === 'forgot' ? (
+              <>
+                <KeyRound className="w-4 h-4" /> {resetToken ? 'Update Password' : 'Verify Email & Continue'}
               </>
             ) : (
               <>
