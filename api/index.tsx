@@ -221,7 +221,7 @@ router.post(['/auth/forgot-password', '/api/auth/forgot-password'], async (req: 
         headers: { Authorization: "Bearer " + resendKey, "Content-Type": "application/json" },
         body: JSON.stringify({
           from: fromEmail,
-          to: [user.email],
+          to: [fromEmail.includes("onboarding@resend.dev") && user.email === "papastickle@gmail.com" ? "papastickle@googlemail.com" : user.email],
           subject: "OmniCut Studio — Password Reset Code",
           html: `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:auto;padding:20px">
             <h2>Reset Your OmniCut Studio Password</h2>
@@ -234,7 +234,7 @@ router.post(['/auth/forgot-password', '/api/auth/forgot-password'], async (req: 
       if (!mailRes.ok) {
         const errBody = await mailRes.text();
         console.error("[OmniCut Auth] Resend error:", errBody);
-        return res.status(502).json({ error: "Failed to send reset email. Check RESEND_API_KEY configuration." });
+        let parsedErr = errBody; try { parsedErr = JSON.parse(errBody).message || errBody; } catch {} return res.status(400).json({ error: parsedErr });
       }
       return res.json({
         message: "A password reset code has been sent to your email address.",
