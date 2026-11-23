@@ -38,7 +38,7 @@ export const MediaUploadModal: React.FC = () => {
 
   const fetchLaptopLibrary = async () => {
     setLoadingLibrary(true);
-    const apiBase = (import.meta as any).env?.VITE_API_URL || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? 'https://api.credibleartisans.com' : '');
+    const apiBase = (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? 'https://api.credibleartisans.com' : '');
     try {
       const res = await fetch(`${apiBase}/api/media-library`);
       if (res.ok) {
@@ -130,7 +130,7 @@ export const MediaUploadModal: React.FC = () => {
   };
 
   const uploadToLaptopServer = async (file: File): Promise<string> => {
-    const apiBase = (import.meta as any).env?.VITE_API_URL || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? 'https://api.credibleartisans.com' : '');
+    const apiBase = (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? 'https://api.credibleartisans.com' : '');
     try {
       const formData = new FormData();
       formData.append("file", file);
