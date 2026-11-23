@@ -39,3 +39,46 @@ export function cuesToSRT(cues: SubtitleCue[]): string {
     return `${i+1}\n${fmt(c.start)} --> ${fmt(c.end)}\n${c.text}\n`;
   }).join('\n');
 }
+
+export function generateSmartScript(topic: string, lang: "en" | "tw" | "pcm" | "fr" | "yo" = "en", durationSec = 30): SubtitleCue[] {
+  const cleanTopic = (topic || "your brand").trim();
+  const templates: Record<string, string[]> = {
+    en: [
+      `Stop scrolling — here is how ${cleanTopic} changes everything today.`,
+      `Most people overlook the biggest advantage inside ${cleanTopic}.`,
+      `Watch how fast you can launch and scale with ${cleanTopic} in real time.`,
+      `Tap the link below and try ${cleanTopic} now. Subscribe for more!`
+    ],
+    tw: [
+      `Gyina kakra — hwɛ sɛnea ${cleanTopic} bɛboa wo nnɛ.`,
+      `Nnipa pii nnim mfaso kɛse a ɛwɔ ${cleanTopic} mu.`,
+      `Hwɛ sɛnea wubetumi afi ase ntɛm wɔ ${cleanTopic} so.`,
+      `Mia link a ɛwɔ aseɛ no na sɔ ${cleanTopic} hwɛ nnɛ. Medaase!`
+    ],
+    pcm: [
+      `No waka pass — see how ${cleanTopic} fit level up your hustle today.`,
+      `Plenty people never sabi dis sharp update inside ${cleanTopic}.`,
+      `Look how fast everything dey run smooth with ${cleanTopic}.`,
+      `Click di link below make you start with ${cleanTopic} sharp-sharp!`
+    ],
+    fr: [
+      `Arrêtez tout — découvrez comment ${cleanTopic} transforme votre quotidien.`,
+      `Voici le secret que peu de créateurs connaissent sur ${cleanTopic}.`,
+      `Regardez la rapidité et la fluidité de ${cleanTopic} en action.`,
+      `Cliquez sur le lien ci-dessous pour essayer ${cleanTopic} dès maintenant !`
+    ],
+    yo: [
+      `Dúró ná — wo bí ${cleanTopic} ṣe lè yí iṣẹ́ rẹ padà lónìí.`,
+      `Ọ̀pọ̀ ènìyàn kò tíì mọ àǹfààní ńlá tó wà nínú ${cleanTopic}.`,
+      `Wo bí ohun gbogbo ṣe ń ṣiṣẹ́ kíákíá pẹ̀lú ${cleanTopic}.`,
+      `Tẹ ìjápọ̀ ìsàlẹ̀ láti bẹ̀rẹ̀ pẹ̀lú ${cleanTopic} báyìí!`
+    ]
+  };
+  const lines = templates[lang] || templates.en;
+  const step = Math.max(4, Math.floor(durationSec / lines.length));
+  return lines.map((text, idx) => ({
+    start: idx * step,
+    end: idx === lines.length - 1 ? durationSec : (idx + 1) * step,
+    text
+  }));
+}
