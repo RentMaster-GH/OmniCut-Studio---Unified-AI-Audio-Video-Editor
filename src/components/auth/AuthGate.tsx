@@ -25,6 +25,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [resetToken, setResetToken] = useState('');
+  const [emailedReset, setEmailedReset] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [name, setName] = useState('');
@@ -63,6 +64,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
     setPassword('');
     setConfirmPassword('');
     setResetToken('');
+    setEmailedReset(false);
     setShowPassword(false);
     setShowConfirmPassword(false);
   };
@@ -71,7 +73,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
     e.preventDefault();
     setError(null);
 
-    if ((status === 'register' || (status === 'forgot' && resetToken)) && password !== confirmPassword) {
+    if ((status === 'register' || (status === 'forgot' && (resetToken || emailedReset))) && password !== confirmPassword) {
       setError('Passwords do not match. Please re-enter and confirm your password.');
       return;
     }
@@ -80,7 +82,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
     try {
       if (status === 'forgot') {
-        if (!resetToken) {
+        if (!resetToken && !emailedReset) {
           const res = await originalFetch(`${apiBase}/api/auth/forgot-password`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -88,8 +90,12 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'Could not initiate password reset');
-          setResetToken(data.resetToken || '');
-          setSuccessMsg(data.message || 'Account verified! Enter and confirm your new password below.');
+          if (data.emailed) {
+            setEmailedReset(true);
+          } else {
+            setResetToken(data.resetToken || '');
+          }
+          setSuccessMsg(data.message || 'Check your email for the reset code.');
           return;
         } else {
           const res = await originalFetch(`${apiBase}/api/auth/reset-password`, {
@@ -228,7 +234,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
             <input
               type="email"
               required
-              disabled={status === 'forgot' && Boolean(resetToken)}
+              disabled={status === 'forgot' && (Boolean(resetToken) || emailedReset)}
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -236,7 +242,21 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
             />
           </div>
 
-          {(status !== 'forgot' || Boolean(resetToken)) && (
+          {status === 'forgot' && emailedReset && (
+            <div>
+              <label className="block text-zinc-300 font-medium mb-1">Reset Code (from email)</label>
+              <input
+                type="text"
+                required
+                placeholder="Paste reset code from your inbox"
+                value={resetToken}
+                onChange={(e) => setResetToken(e.target.value.trim())}
+                className="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 focus:border-blue-500 text-white font-mono text-[11px] outline-none"
+              />
+            </div>
+          )}
+
+          {(status !== 'forgot' || Boolean(resetToken) || emailedReset) && (
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-zinc-300 font-medium">
@@ -274,7 +294,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
             </div>
           )}
 
-          {(status === 'register' || (status === 'forgot' && Boolean(resetToken))) && (
+          {(status === 'register' || (status === 'forgot' && (Boolean(resetToken) || emailedReset))) && (
             <div>
               <label className="block text-zinc-300 font-medium mb-1">
                 {status === 'forgot' ? 'Confirm New Password' : 'Confirm Password'}
@@ -314,7 +334,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
               </>
             ) : status === 'forgot' ? (
               <>
-                <KeyRound className="w-4 h-4" /> {resetToken ? 'Update Password' : 'Verify Email & Continue'}
+                <KeyRound className="w-4 h-4" /> {(resetToken || emailedReset) ? 'Update Password' : 'Send Reset Code'}
               </>
             ) : (
               <>

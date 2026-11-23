@@ -213,7 +213,36 @@ router.post(['/auth/forgot-password', '/api/auth/forgot-password'], async (req: 
       pwFingerprint,
       exp: Math.floor(Date.now() / 1000) + 900,
     });
-    console.log(`[OmniCut Auth] Password reset token issued for ${user.email}`);
+    const resendKey = process.env.RESEND_API_KEY || "";
+    const fromEmail = process.env.OMNICUT_FROM_EMAIL || process.env.DRS_FROM_EMAIL || "OmniCut Studio <onboarding@resend.dev>";
+    if (resendKey) {
+      const mailRes = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + resendKey, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from: fromEmail,
+          to: [user.email],
+          subject: "OmniCut Studio — Password Reset Code",
+          html: `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:auto;padding:20px">
+            <h2>Reset Your OmniCut Studio Password</h2>
+            <p>Copy your single-use reset code below (valid for 15 minutes):</p>
+            <pre style="background:#111;color:#fff;padding:12px;border-radius:8px;overflow-x:auto;font-size:12px">${resetToken}</pre>
+          </div>`,
+        }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!mailRes.ok) {
+        const errBody = await mailRes.text();
+        console.error("[OmniCut Auth] Resend error:", errBody);
+        return res.status(502).json({ error: "Failed to send reset email. Check RESEND_API_KEY configuration." });
+      }
+      return res.json({
+        message: "A password reset code has been sent to your email address.",
+        emailed: true,
+      });
+    }
+
+    console.log(`[OmniCut Auth] Password reset token issued (local fallback) for ${user.email}`);
     return res.json({
       message: 'Reset token generated. Enter your new password below.',
       resetToken,
